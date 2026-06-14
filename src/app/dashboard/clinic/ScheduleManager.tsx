@@ -16,6 +16,7 @@ const ALL_DAYS: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 interface Schedule {
   id: string
   day_of_week: DayOfWeek
+  session_type: 'MORNING' | 'EVENING'
   start_time: string
   end_time: string
   slot_duration: number
@@ -57,8 +58,22 @@ export default function ScheduleManager({ doctor_org_id }: { doctor_org_id: stri
 
   useEffect(() => { load() }, [doctor_org_id])
 
-  function getSchedule(day: DayOfWeek): Schedule | undefined {
-    return schedules.find(s => s.day_of_week === day)
+  function getSchedule(
+    day: DayOfWeek,
+    session: 'MORNING' | 'EVENING'
+  ): Schedule | undefined {
+    return schedules.find(
+      s =>
+        s.day_of_week === day &&
+        s.session_type === session
+    )
+  }
+
+  function getDaySchedules(day: DayOfWeek) {
+    return {
+      morning: getSchedule(day, 'MORNING'),
+      evening: getSchedule(day, 'EVENING'),
+    }
   }
 
   function flash(msg: string, isError = false) {
@@ -69,45 +84,106 @@ export default function ScheduleManager({ doctor_org_id }: { doctor_org_id: stri
   function handleDayToggle(day: DayOfWeek, checked: boolean) {
     if (!checked) {
       startTransition(async () => {
-        const r = await deleteScheduleAction(doctor_org_id, day)
-        if (r?.error) flash(r.error, true)
-        else { flash('Day removed'); await load() }
+        await deleteScheduleAction(doctor_org_id, day, 'MORNING')
+        await deleteScheduleAction(doctor_org_id, day, 'EVENING')
+
+        flash('Day removed')
+        await load()
       })
     } else {
       startTransition(async () => {
-        const r = await upsertScheduleAction({
+        await upsertScheduleAction({
           doctor_org_id,
           day_of_week: day,
+          session_type: 'MORNING',
           start_time: '09:00',
           end_time: '13:00',
-          slot_duration: 60,
-          max_per_slot: 10,
+          slot_duration: 30,
+          max_per_slot: 1,
         })
-        if (r?.error) flash(r.error, true)
-        else { flash('Day added'); await load() }
+
+        flash('Day added')
+        await load()
       })
     }
   }
 
-  function handleScheduleChange(day: DayOfWeek, field: string, value: string | number) {
-    setSchedules(prev => prev.map(s =>
-      s.day_of_week === day ? { ...s, [field]: value } : s
-    ))
+  async function createSession(
+    day: DayOfWeek,
+    session: 'MORNING' | 'EVENING'
+  ) {
+    const r = await upsertScheduleAction({
+      doctor_org_id,
+      day_of_week: day,
+      session_type: session,
+      start_time: session === 'MORNING' ? '09:00' : '17:00',
+      end_time: session === 'MORNING' ? '13:00' : '20:00',
+      slot_duration: 30,
+      max_per_slot: 1,
+    })
+
+    if (r?.error) {
+      flash(r.error, true)
+      return
+    }
+
+    await load()
   }
 
-  function handleSaveDay(day: DayOfWeek) {
-    const s = getSchedule(day)
+  async function removeSession(
+    day: DayOfWeek,
+    session: 'MORNING' | 'EVENING'
+  ) {
+    const r = await deleteScheduleAction(
+      doctor_org_id,
+      day,
+      session
+    )
+
+    if (r?.error) {
+      flash(r.error, true)
+      return
+    }
+
+    await load()
+  }
+
+  function handleScheduleChange(
+    day: DayOfWeek,
+    session: 'MORNING' | 'EVENING',
+    field: string,
+    value: string | number
+  ) {
+    setSchedules(prev =>
+      prev.map(s =>
+        s.day_of_week === day &&
+        s.session_type === session
+          ? { ...s, [field]: value }
+          : s
+      )
+    )
+  }
+
+  function handleSaveDay(
+    day: DayOfWeek,
+    session: 'MORNING' | 'EVENING'
+  ) {
+    const s = getSchedule(day, session)
+
     if (!s) return
+
     startTransition(async () => {
       const r = await upsertScheduleAction({
         doctor_org_id,
         day_of_week: day,
+        session_type: session,
         start_time: s.start_time,
         end_time: s.end_time,
         slot_duration: s.slot_duration,
         max_per_slot: s.max_per_slot,
         daily_limit: s.daily_limit,
       })
+
       if (r?.error) flash(r.error, true)
       else flash('Saved')
     })
@@ -161,15 +237,20 @@ export default function ScheduleManager({ doctor_org_id }: { doctor_org_id: stri
 
       {/* OPD Schedule */}
       {activeTab === 'schedule' && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {ALL_DAYS.map(day => {
-            const sched = getSchedule(day)
-            const active = !!sched
+            const { morning, evening } = getDaySchedules(day)
+
+            const active = !!morning || !!evening
+
             return (
-              <div key={day} className="bg-white rounded-lg border border-gray-100 px-4 py-3">
+              <div
+                key={day}
+                className="bg-white rounded-lg border border-gray-100 px-4 py-3"
+              >
+                {/* Day Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {/* Toggle */}
                     <button
                       onClick={() => handleDayToggle(day, !active)}
                       disabled={isPending}
@@ -177,63 +258,267 @@ export default function ScheduleManager({ doctor_org_id }: { doctor_org_id: stri
                         active ? 'bg-[#006EFF]' : 'bg-gray-200'
                       } disabled:opacity-50`}
                     >
-                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
-                        active ? 'translate-x-4' : 'translate-x-1'
-                      }`} />
+                      <span
+                        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                          active ? 'translate-x-4' : 'translate-x-1'
+                        }`}
+                      />
                     </button>
-                    <span className="text-sm font-medium text-gray-700 w-8">{day}</span>
+
+                    <span className="text-sm font-medium text-gray-700 w-10">
+                      {day}
+                    </span>
                   </div>
-                  {active && (
-                    <button
-                      onClick={() => handleSaveDay(day)}
-                      disabled={isPending}
-                      className="text-xs text-[#006EFF] hover:underline disabled:opacity-50"
-                    >
-                      Save
-                    </button>
-                  )}
                 </div>
 
-                {active && sched && (
-                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Start</label>
-                      <input
-                        type="time"
-                        value={sched.start_time}
-                        onChange={e => handleScheduleChange(day, 'start_time', e.target.value)}
-                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:border-[#006EFF] focus:outline-none"
-                      />
+                {active && (
+                  <div className="mt-4 space-y-4">
+                    {/* MORNING SESSION */}
+                    <div className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-medium">
+                          Morning Session
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            morning
+                              ? removeSession(day, 'MORNING')
+                              : createSession(day, 'MORNING')
+                          }
+                          disabled={isPending}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${
+                            morning ? 'bg-[#006EFF]' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                              morning ? 'translate-x-4' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {morning && (
+                        <>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">
+                                Start Time
+                              </label>
+                              <input
+                                type="time"
+                                value={morning.start_time}
+                                onChange={e =>
+                                  handleScheduleChange(
+                                    day,
+                                    'MORNING',
+                                    'start_time',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">
+                                End Time
+                              </label>
+                              <input
+                                type="time"
+                                value={morning.end_time}
+                                onChange={e =>
+                                  handleScheduleChange(
+                                    day,
+                                    'MORNING',
+                                    'end_time',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">
+                                Slot Duration
+                              </label>
+                              <select
+                                value={morning.slot_duration}
+                                onChange={e =>
+                                  handleScheduleChange(
+                                    day,
+                                    'MORNING',
+                                    'slot_duration',
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                              >
+                                <option value={15}>15</option>
+                                <option value={30}>30</option>
+                                <option value={45}>45</option>
+                                <option value={60}>60</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">
+                                Max Patients Per Slot
+                              </label>
+                              <input
+                                type="number"
+                                min={1}
+                                value={morning.max_per_slot}
+                                onChange={e =>
+                                  handleScheduleChange(
+                                    day,
+                                    'MORNING',
+                                    'max_per_slot',
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() =>
+                              handleSaveDay(day, 'MORNING')
+                            }
+                            disabled={isPending}
+                            className="mt-3 text-xs text-[#006EFF] hover:underline"
+                          >
+                            Save Morning
+                          </button>
+                        </>
+                      )}
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">End</label>
-                      <input
-                        type="time"
-                        value={sched.end_time}
-                        onChange={e => handleScheduleChange(day, 'end_time', e.target.value)}
-                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:border-[#006EFF] focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Patients/slot</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={sched.max_per_slot}
-                        onChange={e => handleScheduleChange(day, 'max_per_slot', Number(e.target.value))}
-                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:border-[#006EFF] focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Daily limit</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="No limit"
-                        value={sched.daily_limit ?? ''}
-                        onChange={e => handleScheduleChange(day, 'daily_limit', e.target.value ? Number(e.target.value) : null as unknown as number)}
-                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:border-[#006EFF] focus:outline-none"
-                      />
+
+                    {/* EVENING SESSION */}
+                    <div className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-medium">
+                          Evening Session
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            evening
+                              ? removeSession(day, 'EVENING')
+                              : createSession(day, 'EVENING')
+                          }
+                          disabled={isPending}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${
+                            evening ? 'bg-[#006EFF]' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                              evening ? 'translate-x-4' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {evening && (
+                        <>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">
+                                Start Time
+                              </label>
+                              <input
+                                type="time"
+                                value={evening.start_time}
+                                onChange={e =>
+                                  handleScheduleChange(
+                                    day,
+                                    'EVENING',
+                                    'start_time',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">
+                                End Time
+                              </label>
+                              <input
+                                type="time"
+                                value={evening.end_time}
+                                onChange={e =>
+                                  handleScheduleChange(
+                                    day,
+                                    'EVENING',
+                                    'end_time',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">
+                                Slot Duration
+                              </label>
+                              <select
+                                value={evening.slot_duration}
+                                onChange={e =>
+                                  handleScheduleChange(
+                                    day,
+                                    'EVENING',
+                                    'slot_duration',
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                              >
+                                <option value={15}>15</option>
+                                <option value={30}>30</option>
+                                <option value={45}>45</option>
+                                <option value={60}>60</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">
+                                Max Patients Per Slot
+                              </label>
+                              <input
+                                type="number"
+                                min={1}
+                                value={evening.max_per_slot}
+                                onChange={e =>
+                                  handleScheduleChange(
+                                    day,
+                                    'EVENING',
+                                    'max_per_slot',
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() =>
+                              handleSaveDay(day, 'EVENING')
+                            }
+                            disabled={isPending}
+                            className="mt-3 text-xs text-[#006EFF] hover:underline"
+                          >
+                            Save Evening
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}

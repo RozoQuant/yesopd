@@ -9,6 +9,7 @@ import type { DayOfWeek } from '@/types'
 export interface ScheduleInput {
   doctor_org_id: string
   day_of_week: DayOfWeek
+  session_type: 'MORNING' | 'EVENING'
   start_time: string      // "09:00"
   end_time: string        // "13:00"
   slot_duration?: number  // default 60
@@ -25,6 +26,7 @@ export async function upsertScheduleAction(input: ScheduleInput) {
       {
         doctor_org_id: input.doctor_org_id,
         day_of_week: input.day_of_week,
+        session_type: input.session_type,
         start_time: input.start_time,
         end_time: input.end_time,
         slot_duration: input.slot_duration ?? 60,
@@ -32,7 +34,7 @@ export async function upsertScheduleAction(input: ScheduleInput) {
         daily_limit: input.daily_limit ?? null,
         is_active: true,
       },
-      { onConflict: 'doctor_org_id,day_of_week' }
+      { onConflict: 'doctor_org_id,day_of_week,session_type' }
     )
 
   if (error) return { error: error.message }
@@ -40,7 +42,7 @@ export async function upsertScheduleAction(input: ScheduleInput) {
   return { success: true }
 }
 
-export async function deleteScheduleAction(doctor_org_id: string, day_of_week: DayOfWeek) {
+export async function deleteScheduleAction(doctor_org_id: string, day_of_week: DayOfWeek, session_type: 'MORNING' | 'EVENING') {
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -48,6 +50,7 @@ export async function deleteScheduleAction(doctor_org_id: string, day_of_week: D
     .delete()
     .eq('doctor_org_id', doctor_org_id)
     .eq('day_of_week', day_of_week)
+    .eq('session_type', session_type)
 
   if (error) return { error: error.message }
   revalidatePath('/dashboard/clinic')
