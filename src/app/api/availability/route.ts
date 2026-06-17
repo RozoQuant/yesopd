@@ -70,10 +70,14 @@ export async function GET(request: NextRequest) {
     bookingCount.set(key, (bookingCount.get(key) ?? 0) + 1)
   }
 
-  // Build schedule map by day
-  const scheduleByDay = new Map(
-    (schedules ?? []).map(s => [s.day_of_week, s])
-  )
+  // Build schedule map by day (supports MORNING + EVENING)
+  const scheduleByDay = new Map<string, typeof schedules>()
+
+  for (const schedule of schedules ?? []) {
+    const existing = scheduleByDay.get(schedule.day_of_week) ?? []
+    existing.push(schedule)
+    scheduleByDay.set(schedule.day_of_week, existing)
+  }
 
   // ── 5. Build availability per date ────────────────────────
   const availability = []
@@ -102,24 +106,46 @@ export async function GET(request: NextRequest) {
       continue
     }
 
-    const dow = getDayOfWeek(d)
-    const schedule = scheduleByDay.get(dow)
+  const dow = getDayOfWeek(d)
+  const daySchedules = scheduleByDay.get(dow)
 
-    if (!schedule) {
-      availability.push({ date: d, slots: [], reason: 'no_schedule' })
-      continue
-    }
+  if (!daySchedules || daySchedules.length === 0) {
+    availability.push({
+      date: d,
+      slots: [],
+      reason: 'no_schedule',
+    })
+    continue
+  }
 
-    // Use exception times if partial-day override
-    const startTime = exception?.start_time ?? schedule.start_time
-    const endTime = exception?.end_time ?? schedule.end_time
+  let dailyBooked = 0
+  let combinedSlots: {
+    start: string
+    end: string
+    booked: number
+    capacity: number
+    available: boolean
+  }[] = []
 
-    const rawSlots = generateSlots(startTime, endTime, schedule.slot_duration)
+  for (const schedule of daySchedules) {
+    const startTime =
+      exception?.start_time ?? schedule.start_time
 
-    let dailyBooked = 0
-    const slots = rawSlots.map(slot => {
-      const booked = bookingCount.get(`${d}|${slot.start}`) ?? 0
+    const endTime =
+      exception?.end_time ?? schedule.end_time
+
+    const rawSlots = generateSlots(
+      startTime,
+      endTime,
+      schedule.slot_duration
+    )
+
+    const sessionSlots = rawSlots.map(slot => {
+      const booked =
+        bookingCount.get(`${d}|${slot.start}`) ?? 0
+
       dailyBooked += booked
+
       return {
         start: slot.start,
         end: slot.end,
@@ -129,17 +155,31 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Apply daily limit
-    const dailyLimit = schedule.daily_limit
-    const dailyFull = dailyLimit != null && dailyBooked >= dailyLimit
-
-    availability.push({
-      date: d,
-      slots: dailyFull
-        ? slots.map(s => ({ ...s, available: false }))
-        : slots,
-    })
+    combinedSlots.push(...sessionSlots)
   }
+
+  // sort morning + evening slots chronologically
+  combinedSlots.sort((a, b) =>
+    a.start.localeCompare(b.start)
+  )
+
+  const dailyLimit =
+    daySchedules.find(s => s.daily_limit != null)
+      ?.daily_limit ?? null
+
+  const dailyFull =
+    dailyLimit != null &&
+    dailyBooked >= dailyLimit
+
+  availability.push({
+    date: d,
+    slots: dailyFull
+      ? combinedSlots.map(s => ({
+          ...s,
+          available: false,
+        }))
+      : combinedSlots,
+  })}
 
   return NextResponse.json({ doctor_org_id, availability })
 }
