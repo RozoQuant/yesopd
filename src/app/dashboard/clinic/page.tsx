@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import LogoutButton from '@/components/LogoutButton'
 import ClinicDashboardClient from './ClinicDashboardClient'
 import { getMyOrgAction, getDoctorsForOrgAction, getSpecializationsAction } from '@/app/actions/doctor'
+import { getStaffForOrgAction } from '@/app/actions/staff'
+
 
 export default async function ClinicDashboard() {
   const supabase = await createClient()
@@ -17,6 +19,7 @@ export default async function ClinicDashboard() {
 
   const { data: org } = await getMyOrgAction()
   const { data: doctors } = org ? await getDoctorsForOrgAction(org.id) : { data: [] }
+  const { data: staff } = org ? await getStaffForOrgAction(org.id) : { data: [] }
   const { data: specializations } = await getSpecializationsAction()
 
   return (
@@ -49,6 +52,7 @@ export default async function ClinicDashboard() {
           <ClinicDashboardClient
             org={org}
             initialDoctors={doctors ?? []}
+            initialStaff={staff ?? []}
             specializations={specializations ?? []}
           />
         )}
