@@ -102,6 +102,7 @@ export async function getStaffForOrgAction(org_id: string) {
     .from('staff')
     .select(`
       id,
+      user_id,
       designation,
       is_active,
       users (
@@ -127,4 +128,46 @@ export async function getStaffForOrgAction(org_id: string) {
   }))
 
   return { data: normalized }
+}
+
+export async function toggleStaffStatusAction(
+  staffId: string,
+  userId: string,
+  isActive: boolean
+) {
+  const supabase = await createClient()
+
+  const { error: staffError } = await supabase
+    .from('staff')
+    .update({
+      is_active: isActive,
+    })
+    .eq('id', staffId)
+
+  if (staffError) {
+    return {
+      success: false,
+      message: staffError.message,
+    }
+  }
+
+  const { error: userError } = await supabase
+    .from('users')
+    .update({
+      is_active: isActive,
+    })
+    .eq('id', userId)
+
+  if (userError) {
+    return {
+      success: false,
+      message: userError.message,
+    }
+  }
+
+  revalidatePath('/dashboard/clinic')
+
+  return {
+    success: true,
+  }
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import AddStaffForm from './AddStaffForm'
+import { toggleStaffStatusAction } from '@/app/actions/staff'
 
 interface StaffUser {
   id: string
@@ -84,10 +85,46 @@ export default function StaffList({
                     </td>
 
                     <td className="py-3">
-                      {staff.is_active
-                        ? 'Active'
-                        : 'Inactive'}
+                    <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                        staff.is_active
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}
+                    >
+                        {staff.is_active ? 'Active' : 'Inactive'}
+                    </span>
                     </td>
+
+                    <td className="py-3">
+                    <button
+                        onClick={async () => {
+                        const result =
+                            await toggleStaffStatusAction(
+                            staff.id,
+                            staff.user_id,
+                            !staff.is_active
+                            )
+
+                        if (result.success) {
+                            window.location.reload()
+                        } else {
+                            alert(result.message)
+                        }
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-medium ${
+                        staff.is_active
+                            ? 'bg-red-600 text-white'
+                            : 'bg-green-600 text-white'
+                        }`}
+                    >
+                        {staff.is_active
+                        ? 'Deactivate'
+                        : 'Activate'}
+                    </button>
+                    </td>
+
+
                   </tr>
                 ))}
               </tbody>
