@@ -1,5 +1,8 @@
 'use client'
 
+import { useState, useTransition } from 'react'
+import { addStaffAction } from '@/app/actions/staff'
+
 interface Props {
   org_id: string
   onClose: () => void
@@ -11,6 +14,37 @@ export default function AddStaffForm({
   onClose,
   onSaved,
 }: Props) {
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError(null)
+
+    const fd = new FormData(e.currentTarget)
+
+    startTransition(async () => {
+      const result = await addStaffAction({
+        org_id,
+        full_name: fd.get('full_name') as string,
+        phone: fd.get('phone') as string,
+        email: fd.get('email') as string,
+        designation: fd.get('designation') as
+          | 'RECEPTIONIST'
+          | 'CABIN_ATTENDANT'
+          | 'NURSE'
+          | 'OTHER',
+      })
+
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+
+      onSaved()
+    })
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -27,12 +61,23 @@ export default function AddStaffForm({
           </button>
         </div>
 
-        <form className="px-6 py-5 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="px-6 py-5 space-y-4"
+        >
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           <div>
             <label className="label">
               Full Name *
             </label>
             <input
+              name="full_name"
+              required
               className="input"
               placeholder="Staff name"
             />
@@ -43,6 +88,8 @@ export default function AddStaffForm({
               Mobile Number *
             </label>
             <input
+              name="phone"
+              required
               className="input"
               placeholder="9876543210"
             />
@@ -50,9 +97,12 @@ export default function AddStaffForm({
 
           <div>
             <label className="label">
-              Email (Optional)
+              Email *
             </label>
             <input
+              name="email"
+              type="email"
+              required
               className="input"
               placeholder="staff@example.com"
             />
@@ -63,19 +113,36 @@ export default function AddStaffForm({
               Designation *
             </label>
 
-            <select className="input">
-              <option>RECEPTIONIST</option>
-              <option>CABIN_ATTENDANT</option>
-              <option>NURSE</option>
-              <option>OTHER</option>
+            <select
+              name="designation"
+              required
+              className="input"
+              defaultValue="RECEPTIONIST"
+            >
+              <option value="RECEPTIONIST">
+                RECEPTIONIST
+              </option>
+
+              <option value="CABIN_ATTENDANT">
+                CABIN_ATTENDANT
+              </option>
+
+              <option value="NURSE">
+                NURSE
+              </option>
+
+              <option value="OTHER">
+                OTHER
+              </option>
             </select>
           </div>
 
           <button
-            type="button"
-            className="w-full bg-[#006EFF] text-white rounded-xl py-3 text-sm font-semibold"
+            type="submit"
+            disabled={isPending}
+            className="w-full bg-[#006EFF] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#0058CC] disabled:opacity-60 transition"
           >
-            Add Staff
+            {isPending ? 'Inviting...' : 'Add Staff'}
           </button>
         </form>
       </div>

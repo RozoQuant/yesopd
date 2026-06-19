@@ -8,7 +8,7 @@ export interface AddStaffInput {
   org_id: string
   full_name: string
   phone: string
-  email?: string
+  email: string
   designation:
     | 'RECEPTIONIST'
     | 'CABIN_ATTENDANT'
@@ -17,12 +17,81 @@ export interface AddStaffInput {
 }
 
 export async function addStaffAction(input: AddStaffInput) {
-  const supabase = await createClient()
   const admin = createAdminClient()
 
-  return {
-    success: false,
-    message: 'Implementation pending',
+  try {
+    const email = input.email.trim().toLowerCase()
+
+    const { data: invitedUser, error: inviteError } =
+      await admin.auth.admin.inviteUserByEmail(email, {
+        data: {
+          full_name: input.full_name,
+          role: 'STAFF',
+        },
+      })
+
+    if (inviteError) {
+      return {
+        success: false,
+        message: inviteError.message,
+      }
+    }
+
+    const userId = invitedUser.user?.id
+
+    if (!userId) {
+      return {
+        success: false,
+        message: 'Failed to create staff account',
+      }
+    }
+
+    const supabase = await createClient()
+
+    const { error: userUpdateError } = await supabase
+      .from('users')
+      .update({
+        phone: input.phone,
+      })
+      .eq('id', userId)
+
+    if (userUpdateError) {
+      return {
+        success: false,
+        message: userUpdateError.message,
+      }
+    }
+
+    const { error: staffError } = await supabase
+      .from('staff')
+      .insert({
+        user_id: userId,
+        org_id: input.org_id,
+        designation: input.designation,
+        is_active: true,
+      })
+
+    if (staffError) {
+      return {
+        success: false,
+        message: staffError.message,
+      }
+    }
+
+    revalidatePath('/dashboard/clinic')
+
+    return {
+      success: true,
+      message: 'Staff invited successfully',
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Failed to create staff',
+    }
   }
 }
 
