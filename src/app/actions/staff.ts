@@ -24,6 +24,11 @@ export async function addStaffAction(input: AddStaffInput) {
 
     const { data: invitedUser, error: inviteError } =
       await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo:
+          process.env.NODE_ENV === 'development'
+            ? 'http://localhost:3000/auth/callback'
+            : 'https://www.yesopd.com/auth/callback',
+
         data: {
           full_name: input.full_name,
           role: 'STAFF',
