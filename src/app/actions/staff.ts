@@ -136,6 +136,7 @@ export async function toggleStaffStatusAction(
   isActive: boolean
 ) {
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   const { error: staffError } = await supabase
     .from('staff')
@@ -151,7 +152,7 @@ export async function toggleStaffStatusAction(
     }
   }
 
-  const { error: userError } = await supabase
+  const { error: userError } = await admin
     .from('users')
     .update({
       is_active: isActive,
