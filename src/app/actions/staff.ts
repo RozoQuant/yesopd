@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
+
 export interface AddStaffInput {
   org_id: string
   full_name: string
@@ -15,6 +16,7 @@ export interface AddStaffInput {
     | 'NURSE'
     | 'OTHER'
 }
+
 
 export async function addStaffAction(input: AddStaffInput) {
   const admin = createAdminClient()
@@ -74,6 +76,7 @@ export async function addStaffAction(input: AddStaffInput) {
         org_id: input.org_id,
         designation: input.designation,
         is_active: true,
+        status: 'INVITED',
       })
 
     if (staffError) {
@@ -109,6 +112,7 @@ export async function getStaffForOrgAction(org_id: string) {
       id,
       user_id,
       designation,
+      status,
       is_active,
       users (
         id,
@@ -143,10 +147,13 @@ export async function toggleStaffStatusAction(
   const supabase = await createClient()
   const admin = createAdminClient()
 
+  const newStatus = isActive ? 'ACTIVE' : 'SUSPENDED'
+
   const { error: staffError } = await supabase
     .from('staff')
     .update({
       is_active: isActive,
+      status: newStatus,
     })
     .eq('id', staffId)
 

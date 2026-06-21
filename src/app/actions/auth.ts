@@ -40,7 +40,10 @@ export async function loginAction(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
 
   if (error) {
     return { error: error.message }
@@ -53,7 +56,35 @@ export async function loginAction(formData: FormData) {
     .eq('id', data.user.id)
     .single()
 
+  // Staff-specific checks
+  if (profile?.role === 'STAFF') {
+    const { data: staff } = await supabase
+      .from('staff')
+      .select('status')
+      .eq('user_id', data.user.id)
+      .single()
+
+    if (staff?.status === 'SUSPENDED') {
+      await supabase.auth.signOut()
+
+      return {
+        error:
+          'Your account has been suspended. Please contact your clinic administrator.',
+      }
+    }
+
+    // First successful login converts INVITED → ACTIVE
+    await supabase
+      .from('staff')
+      .update({
+        status: 'ACTIVE',
+      })
+      .eq('user_id', data.user.id)
+      .eq('status', 'INVITED')
+  }
+
   const role = profile?.role as UserRole | undefined
+
   redirect(role ? ROLE_REDIRECTS[role] : '/auth/login')
 }
 
