@@ -12,11 +12,10 @@ export async function middleware(request: NextRequest) {
   pathname.startsWith('/auth/login') ||
   pathname.startsWith('/auth/signup')
   const isSetPassword = pathname.startsWith('/auth/set-password')
+  const isConfirm = pathname.startsWith('/auth/confirm')
   const isOnboarding = pathname.startsWith('/onboarding')
 
-  // Set-password is only for users arriving from an invite link (already in session)
-  // Allow through — SetPasswordForm handles its own auth state
-  if (isSetPassword) return response
+  if (isSetPassword || isConfirm) return response
 
   // ── Auth routes ───────────────────────────────────────────
   if (isAuthRoute) {

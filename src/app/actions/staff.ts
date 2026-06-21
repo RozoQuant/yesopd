@@ -28,8 +28,8 @@ export async function addStaffAction(input: AddStaffInput) {
       await admin.auth.admin.inviteUserByEmail(email, {
         redirectTo:
           process.env.NODE_ENV === 'development'
-            ? 'http://localhost:3000/auth/callback'
-            : 'https://www.yesopd.com/auth/callback',
+            ? 'http://localhost:3000/auth/confirm'
+            : 'https://www.yesopd.com/auth/confirm',
 
         data: {
           full_name: input.full_name,
