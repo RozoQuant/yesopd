@@ -10,7 +10,7 @@ interface Specialization { id: number; name: string }
 interface Props {
   org: Organization
   initialDoctors: unknown[]
-  initialStaff: unknown[]
+  initialStaff: any[]
   specializations: Specialization[]
 }
 
