@@ -17,6 +17,12 @@ export async function middleware(request: NextRequest) {
 
   if (isSetPassword || isConfirm) return response
 
+  // Public auth pages that don't need auth checks
+  const isPublicAuthPage =
+    pathname.startsWith('/auth/forgot-password') ||
+    pathname.startsWith('/auth/reset-password')
+  if (isPublicAuthPage) return response
+
   // ── Auth routes ───────────────────────────────────────────
   if (isAuthRoute) {
     if (user) {
@@ -31,8 +37,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── All protected routes need auth ────────────────────────
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding')) {
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/onboarding') || pathname.startsWith('/account')) {
     if (!user) return NextResponse.redirect(new URL('/auth/login', request.url))
+
+    // /account routes — any authenticated user can access, skip role guard
+    if (pathname.startsWith('/account')) return response
 
     const { data: profile } = await supabase
       .from('users').select('role').eq('id', user.id).single()

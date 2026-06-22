@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
 import PatientAppointments from './PatientAppointments'
+import ChangePasswordLink from '@/components/ChangePasswordLink'
 
 export default async function PatientDashboard() {
   const supabase = await createClient()
@@ -24,7 +25,10 @@ export default async function PatientDashboard() {
             <span className="text-xl font-bold text-[#006EFF]">YES</span>
             <span className="text-xl font-bold text-[#1A1A2E]">OPD</span>
           </div>
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            <ChangePasswordLink />
+            <LogoutButton />
+          </div>
         </div>
       </header>
 

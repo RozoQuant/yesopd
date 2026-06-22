@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import PasswordInput from '@/components/PasswordInput'
 
 export default function SetPasswordForm() {
   const supabase = createClient()
@@ -27,8 +28,6 @@ export default function SetPasswordForm() {
     }
 
     setLoading(true)
-
-    // Update password — user is already in session from invite link
     const { error: updateError } = await supabase.auth.updateUser({ password })
 
     if (updateError) {
@@ -37,13 +36,9 @@ export default function SetPasswordForm() {
       return
     }
 
-    // Mark staff status ACTIVE
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      await supabase
-        .from('staff')
-        .update({ status: 'ACTIVE' })
-        .eq('user_id', user.id)
+      await supabase.from('staff').update({ status: 'ACTIVE' }).eq('user_id', user.id)
     }
 
     router.replace('/dashboard/staff')
@@ -57,37 +52,27 @@ export default function SetPasswordForm() {
         </div>
       )}
 
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-          New Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          required
-          autoComplete="new-password"
-          placeholder="Min. 8 characters"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-[#006EFF] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#006EFF]/20 transition"
-        />
-      </div>
+      <PasswordInput
+        id="password"
+        name="password"
+        label="New Password"
+        placeholder="Min. 8 characters"
+        required
+        autoComplete="new-password"
+        value={password}
+        onChange={e => setPassword((e.target as HTMLInputElement).value)}
+      />
 
-      <div>
-        <label htmlFor="confirm" className="block text-sm font-medium text-gray-700 mb-1">
-          Confirm Password
-        </label>
-        <input
-          id="confirm"
-          type="password"
-          required
-          autoComplete="new-password"
-          placeholder="Re-enter password"
-          value={confirm}
-          onChange={e => setConfirm(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-[#006EFF] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#006EFF]/20 transition"
-        />
-      </div>
+      <PasswordInput
+        id="confirm"
+        name="confirm"
+        label="Confirm Password"
+        placeholder="Re-enter password"
+        required
+        autoComplete="new-password"
+        value={confirm}
+        onChange={e => setConfirm((e.target as HTMLInputElement).value)}
+      />
 
       <button
         type="submit"

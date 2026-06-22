@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { signupAction } from '@/app/actions/auth'
+import PasswordInput from '@/components/PasswordInput'
 import type { UserRole } from '@/types'
 
 const ROLES: { value: UserRole; label: string; desc: string }[] = [
@@ -31,7 +32,6 @@ export default function SignupForm() {
         </div>
       )}
 
-      {/* Role selector */}
       <div>
         <p className="text-sm font-medium text-gray-700 mb-2">I am a</p>
         <div className="grid grid-cols-2 gap-3">
@@ -85,21 +85,15 @@ export default function SignupForm() {
         />
       </div>
 
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          placeholder="Min. 8 characters"
-          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-[#006EFF] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#006EFF]/20 transition"
-        />
-      </div>
+      <PasswordInput
+        id="password"
+        name="password"
+        label="Password"
+        placeholder="Min. 8 characters"
+        required
+        minLength={8}
+        autoComplete="new-password"
+      />
 
       <button
         type="submit"
@@ -115,4 +109,3 @@ export default function SignupForm() {
     </form>
   )
 }
-
