@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import AddStaffForm from './AddStaffForm'
-import { toggleStaffStatusAction } from '@/app/actions/staff'
+import { toggleStaffStatusAction, resendInviteAction } from '@/app/actions/staff'
 
 interface StaffUser {
   id: string
@@ -43,6 +43,8 @@ function StatusBadge({ status }: { status: string }) {
 export default function StaffList({ org_id, initialStaff }: Props) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [staff, setStaff] = useState(initialStaff)
+  const [resending, setResending] = useState<string | null>(null)
+  const [resendMsg, setResendMsg] = useState<{ id: string; ok: boolean; text: string } | null>(null)
 
   async function handleToggle(member: StaffMember) {
     const newActive = !member.is_active
@@ -60,6 +62,20 @@ export default function StaffList({ org_id, initialStaff }: Props) {
     }
   }
 
+  async function handleResend(member: StaffMember) {
+    setResending(member.id)
+    setResendMsg(null)
+    const result = await resendInviteAction(member.id, member.user_id)
+    setResending(null)
+    setResendMsg({
+      id: member.id,
+      ok: result.success,
+      text: result.success ? 'Invite resent successfully.' : (result.message ?? 'Failed to resend.'),
+    })
+    // Clear message after 4s
+    setTimeout(() => setResendMsg(null), 4000)
+  }
+
   return (
     <>
       <div className="bg-white rounded-xl border border-gray-100 p-6">
@@ -73,9 +89,7 @@ export default function StaffList({ org_id, initialStaff }: Props) {
           </button>
         </div>
 
-        <div className="mb-4 text-sm text-gray-500">
-          Staff Count: {staff.length}
-        </div>
+        <div className="mb-4 text-sm text-gray-500">Staff Count: {staff.length}</div>
 
         {staff.length === 0 ? (
           <div className="text-sm text-gray-500">No staff added yet.</div>
@@ -100,15 +114,27 @@ export default function StaffList({ org_id, initialStaff }: Props) {
                     <td className="py-3">
                       <StatusBadge status={member.status} />
                     </td>
-                    <td className="py-3">
-                      {/* Don't allow activate/deactivate while invite is pending */}
-                      {member.status !== 'INVITED' && (
+                    <td className="py-3 space-y-1">
+                      {member.status === 'INVITED' ? (
+                        <div>
+                          <button
+                            onClick={() => handleResend(member)}
+                            disabled={resending === member.id}
+                            className="px-3 py-1 rounded text-xs font-medium bg-yellow-500 text-white disabled:opacity-50"
+                          >
+                            {resending === member.id ? 'Sending…' : 'Resend Invite'}
+                          </button>
+                          {resendMsg?.id === member.id && (
+                            <p className={`text-xs mt-1 ${resendMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
+                              {resendMsg.text}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
                         <button
                           onClick={() => handleToggle(member)}
                           className={`px-3 py-1 rounded text-xs font-medium ${
-                            member.is_active
-                              ? 'bg-red-600 text-white'
-                              : 'bg-green-600 text-white'
+                            member.is_active ? 'bg-red-600 text-white' : 'bg-green-600 text-white'
                           }`}
                         >
                           {member.is_active ? 'Deactivate' : 'Activate'}

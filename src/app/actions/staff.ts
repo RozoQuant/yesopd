@@ -184,3 +184,57 @@ export async function toggleStaffStatusAction(
     success: true,
   }
 }
+
+export async function activateStaffAction(userId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('staff')
+    .update({ status: 'ACTIVE', is_active: true })
+    .eq('user_id', userId)
+
+  if (error) return { success: false, message: error.message }
+  return { success: true }
+}
+
+
+export async function resendInviteAction(staffId: string, userId: string) {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+  if (!caller) return { success: false, message: 'Not authenticated' }
+
+  // Only CLINIC_ADMIN can resend
+  const { data: profile } = await supabase
+    .from('users').select('role').eq('id', caller.id).single()
+  if (profile?.role !== 'CLINIC_ADMIN') return { success: false, message: 'Not authorised' }
+
+  // Only resend if still INVITED
+  const { data: staffRow } = await supabase
+    .from('staff').select('status').eq('id', staffId).single()
+  if (staffRow?.status !== 'INVITED') {
+    return { success: false, message: 'Staff has already activated their account.' }
+  }
+
+  // Get email
+  const admin = createAdminClient()
+  const { data: userData, error: userError } = await admin.auth.admin.getUserById(userId)
+  if (userError || !userData.user?.email) {
+    return { success: false, message: 'Could not find staff email.' }
+  }
+
+  // Delete and re-invite — Supabase does not have a "resend invite" API
+  // so we generate a new invite link for existing user
+  const { error } = await admin.auth.admin.inviteUserByEmail(
+    userData.user.email,
+    {
+      redirectTo:
+        process.env.NODE_ENV === 'development'
+          ? 'http://localhost:3000/auth/confirm'
+          : 'https://www.yesopd.com/auth/confirm',
+    }
+  )
+
+  if (error) return { success: false, message: error.message }
+
+  revalidatePath('/dashboard/clinic')
+  return { success: true }
+}
