@@ -2,7 +2,7 @@ export type UserRole = 'PATIENT' | 'CLINIC_ADMIN' | 'STAFF' | 'SUPER_ADMIN'
 export type OrgType = 'CLINIC' | 'HOSPITAL'
 export type OrgStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED'
 export type DoctorStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE'
-export type AppointmentStatus = 'BOOKED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
+export type AppointmentStatus = 'BOOKED' | 'CHECKED_IN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
 export type AppointmentSource = 'YESOPD' | 'WALK_IN' | 'PHONE' | 'WHATSAPP'
 export type PaymentMode = 'PAY_AT_CLINIC' | 'ADVANCE_PAYMENT' | 'PARTIAL_PAYMENT'
 export type NotificationType = 'BOOKING_CONFIRMATION' | 'APPOINTMENT_REMINDER' | 'APPOINTMENT_CANCELLATION'
@@ -79,6 +79,9 @@ export interface Appointment {
   payment_mode: PaymentMode
   patient_notes: string | null
   cancel_reason: string | null
+  queue_number: number | null
+  checked_in_at: string | null
+  arrived_at: string | null
   booked_at: string
   updated_at: string
 }

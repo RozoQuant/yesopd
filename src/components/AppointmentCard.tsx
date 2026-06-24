@@ -5,10 +5,12 @@ import { cancelAppointmentAction } from '@/app/actions/appointment'
 import type { AppointmentStatus } from '@/types'
 
 const STATUS_STYLES: Record<AppointmentStatus, string> = {
-  BOOKED: 'bg-blue-50 text-blue-700 border-blue-200',
-  COMPLETED: 'bg-green-50 text-green-700 border-green-200',
-  CANCELLED: 'bg-red-50 text-red-700 border-red-200',
-  NO_SHOW: 'bg-gray-100 text-gray-500 border-gray-200',
+  BOOKED:      'bg-blue-50 text-blue-700 border-blue-200',
+  CHECKED_IN:  'bg-teal-50 text-teal-700 border-teal-200',
+  IN_PROGRESS: 'bg-amber-50 text-amber-700 border-amber-200',
+  COMPLETED:   'bg-green-50 text-green-700 border-green-200',
+  CANCELLED:   'bg-red-50 text-red-700 border-red-200',
+  NO_SHOW:     'bg-gray-100 text-gray-500 border-gray-200',
 }
 
 interface Props {
