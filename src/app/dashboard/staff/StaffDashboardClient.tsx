@@ -363,6 +363,8 @@ function CreateApptModal({
   const [wName, setWName] = useState('')
   const [wPhone, setWPhone] = useState('')
   const [wEmail, setWEmail] = useState('')
+  const [wAge, setWAge] = useState('')
+  const [wGender, setWGender] = useState<'MALE' | 'FEMALE' | 'OTHER' | ''>('')
   const [source, setSource] = useState<'PHONE' | 'WHATSAPP'>('PHONE')
   const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -460,6 +462,8 @@ function CreateApptModal({
           full_name: wName,
           phone: wPhone,
           email: wEmail || undefined,
+          gender: wGender || undefined,
+          age: wAge ? parseInt(wAge) : undefined,
           doctor_org_id: doctorOrgId,
           appt_date: date,
           slot_start: slotStart,
@@ -565,6 +569,36 @@ function CreateApptModal({
                   type="email"
                   className="w-full text-sm border border-gray-200 rounded-xl px-3 py-3 bg-white focus:border-[#006EFF] focus:outline-none"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Age (optional)</label>
+                  <input
+                    value={wAge}
+                    onChange={e => setWAge(e.target.value)}
+                    placeholder="e.g. 35"
+                    type="number"
+                    min="0"
+                    max="120"
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-3 bg-white focus:border-[#006EFF] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Gender (optional)</label>
+                  <div className="flex gap-1 mt-1">
+                    {(['MALE', 'FEMALE', 'OTHER'] as const).map(g => (
+                      <button key={g} type="button"
+                        onClick={() => setWGender(wGender === g ? '' : g)}
+                        className={`flex-1 py-2.5 text-xs font-medium rounded-xl transition border ${
+                          wGender === g
+                            ? 'bg-[#006EFF] text-white border-[#006EFF]'
+                            : 'bg-white border-gray-200 text-gray-600'
+                        }`}>
+                        {g === 'MALE' ? 'M' : g === 'FEMALE' ? 'F' : 'O'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </>
           )}
