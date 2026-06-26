@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { assignQueueNumberAction } from './queue'
 
 // ── BOOK ──────────────────────────────────────────────────────
 
@@ -15,7 +16,10 @@ export interface BookAppointmentInput {
 
 export async function bookAppointmentAction(input: BookAppointmentInput) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   if (!user) return { error: 'Not authenticated' }
 
   const { data: rules } = await supabase
@@ -90,7 +94,6 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
     }
   }
 
-
   // 2. Check patient has not already booked this same slot
   const { data: duplicate } = await supabase
     .from('appointments')
@@ -102,7 +105,9 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
     .eq('status', 'BOOKED')
     .maybeSingle()
 
-  if (duplicate) return { error: 'You already have a booking for this slot.' }
+  if (duplicate) {
+    return { error: 'You already have a booking for this slot.' }
+  }
 
   // 3. Insert appointment
   const { data, error } = await supabase
@@ -123,6 +128,14 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
 
   if (error) return { error: error.message }
 
+  // 3b. Assign queue number
+  const { queue_code } = await assignQueueNumberAction(
+    data.id,
+    input.doctor_org_id,
+    input.appt_date,
+    input.slot_start
+  )
+
   // 4. Create confirmation notification
   await supabase.from('notifications').insert({
     user_id: user.id,
@@ -132,7 +145,12 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
   })
 
   revalidatePath('/dashboard/patient')
-  return { success: true, appointment_id: data.id }
+
+  return {
+    success: true,
+    appointment_id: data.id,
+    queue_code,
+  }
 }
 
 // ── CANCEL ────────────────────────────────────────────────────

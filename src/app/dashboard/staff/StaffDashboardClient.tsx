@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { logoutAction } from '@/app/actions/auth'
+import QueueBoard from '@/components/QueueBoard'
 import {
   getQueueAction,
   checkInPatientAction,
