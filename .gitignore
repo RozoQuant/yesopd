@@ -42,3 +42,7 @@ yarn-error.log*
 nism-ra.txt
 projectprogress.txt
 src folder structure.txt
+# AI Context Builder
+build-src-context.ps1
+Build AI Context.cmd
+YESOPD_SRC_Context.txt

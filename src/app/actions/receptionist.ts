@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { assignQueueNumberAction } from './queue'
 
 // ─── PATIENT SEARCH ───────────────────────────────────────────
 export async function searchPatientsAction(query: string, _org_id: string) {
@@ -60,9 +61,10 @@ export async function getQueueAction(org_id: string, date: string) {
 // ─── CHECK-IN ─────────────────────────────────────────────────
 export async function checkInPatientAction(appointment_id: string) {
   const supabase = await createClient()
+  const now = new Date().toISOString()
   const { error } = await supabase
     .from('appointments')
-    .update({ arrived_at: new Date().toISOString(), status: 'CHECKED_IN' })
+    .update({ arrived_at: now, checked_in_at: now, status: 'CHECKED_IN' })
     .eq('id', appointment_id)
   if (error) return { error: error.message }
   revalidatePath('/dashboard/staff')
@@ -104,7 +106,10 @@ export async function receptionistSetStatusAction(
 //   1. Check by phone/email — if patient already exists, reuse them
 //   2. If new: create a stub auth user via admin API → triggers insert
 //      into public.users → then insert into public.patients
-//   3. Insert appointment as CHECKED_IN with queue number
+//   3. Insert appointment as CHECKED_IN
+//   4. Assign queue number via the same RPC used by online bookings
+//      (FIX: previously used a manual count which caused collisions
+//       with online-booked queue numbers)
 
 export interface WalkInInput {
   full_name: string
@@ -149,17 +154,13 @@ export async function registerWalkInAction(input: WalkInInput) {
 
   // ── 3. Create new patient if not found ───────────────────────
   if (!userId) {
-    // Use a placeholder email — walk-in patients don't need to sign in
-    // Format: walkin_<phone>@walkin.yesopd so it's identifiable
     const cleanPhone = input.phone.replace(/\D/g, '')
     const placeholderEmail = input.email?.trim().toLowerCase()
       || `walkin_${cleanPhone}@walkin.yesopd`
 
-    // Step A: create a stub in auth.users via admin API
-    // This also fires the trigger that inserts into public.users
     const { data: authData, error: authErr } = await admin.auth.admin.createUser({
       email: placeholderEmail,
-      email_confirm: true,          // skip email confirmation
+      email_confirm: true,
       user_metadata: {
         full_name: input.full_name.trim(),
         role: 'PATIENT',
@@ -167,7 +168,6 @@ export async function registerWalkInAction(input: WalkInInput) {
     })
 
     if (authErr) {
-      // If email already taken in auth (edge case), find the user
       if (authErr.message.toLowerCase().includes('already')) {
         const { data: found } = await admin
           .from('users')
@@ -187,8 +187,6 @@ export async function registerWalkInAction(input: WalkInInput) {
     }
 
     if (userId) {
-      // Step B: update public.users with phone + full_name
-      // (the trigger may set full_name from metadata already, but we ensure it)
       await admin
         .from('users')
         .update({
@@ -199,14 +197,12 @@ export async function registerWalkInAction(input: WalkInInput) {
         })
         .eq('id', userId)
 
-      // Step C: compute approximate dob from age
       let dob: string | null = null
       if (input.age && input.age > 0) {
         const year = new Date().getFullYear() - input.age
         dob = `${year}-01-01`
       }
 
-      // Step D: insert into patients table
       const { error: patErr } = await admin
         .from('patients')
         .insert({
@@ -215,7 +211,6 @@ export async function registerWalkInAction(input: WalkInInput) {
           dob: dob,
         })
 
-      // Ignore if patients row already exists (upsert semantics)
       if (patErr && !patErr.message.includes('duplicate')) {
         return { error: `Could not create patient record: ${patErr.message}` }
       }
@@ -224,17 +219,8 @@ export async function registerWalkInAction(input: WalkInInput) {
 
   if (!userId) return { error: 'Failed to resolve patient.' }
 
-  // ── 4. Next queue number for this org+date ────────────────────
-  // Count existing appointments for this org on this date
-  const { data: existingAppts } = await admin
-    .from('appointments')
-    .select('id, doctor_organizations!inner(org_id)')
-    .eq('doctor_organizations.org_id', input.doctor_org_id)
-    .eq('appt_date', input.appt_date)
-
-  const queueNumber = (existingAppts?.length ?? 0) + 1
-
-  // ── 5. Insert appointment ─────────────────────────────────────
+  // ── 4. Insert appointment as CHECKED_IN (walk-ins arrive in person) ──
+  const now = new Date().toISOString()
   const { data: appt, error: apptErr } = await supabase
     .from('appointments')
     .insert({
@@ -247,17 +233,47 @@ export async function registerWalkInAction(input: WalkInInput) {
       source: 'WALK_IN',
       payment_mode: 'PAY_AT_CLINIC',
       patient_notes: input.patient_notes ?? null,
-      queue_number: queueNumber,
-      arrived_at: new Date().toISOString(),
-      checked_in_at: new Date().toISOString(),
+      arrived_at: now,
+      checked_in_at: now,
     })
-    .select('id, queue_number')
+    .select('id')
     .single()
 
   if (apptErr) return { error: apptErr.message }
 
+  // ── 5. Assign queue number via RPC (same as online bookings) ──
+  // FIX: Previously computed queue_number as a manual count of all
+  // appointments for the org+date, which caused collisions with
+  // numbers already assigned by the assign_queue_number RPC for
+  // online bookings. Now both paths use the same RPC so numbering
+  // is always consistent and sequential.
+  const { queue_code, error: queueErr } = await assignQueueNumberAction(
+    appt.id,
+    input.doctor_org_id,
+    input.appt_date,
+    input.slot_start
+  )
+
+  if (queueErr) {
+    // Queue number assignment failed — appointment is saved, just warn.
+    // The receptionist can manually note the queue position.
+    console.error('Walk-in queue assignment failed:', queueErr)
+  }
+
+  // Re-fetch the queue_number that the RPC wrote back
+  const { data: apptWithQueue } = await supabase
+    .from('appointments')
+    .select('queue_number')
+    .eq('id', appt.id)
+    .single()
+
   revalidatePath('/dashboard/staff')
-  return { success: true, appointment_id: appt.id, queue_number: appt.queue_number }
+  return {
+    success: true,
+    appointment_id: appt.id,
+    queue_number: apptWithQueue?.queue_number ?? null,
+    queue_code,
+  }
 }
 
 // ─── CREATE APPOINTMENT (existing patient, phone/whatsapp) ────
@@ -304,6 +320,16 @@ export async function createAppointmentAction(input: CreateApptInput) {
     .single()
 
   if (error) return { error: error.message }
+
+  // FIX: receptionist-created appointments for existing patients were
+  // never assigned a queue number. Now uses the same RPC.
+  await assignQueueNumberAction(
+    data.id,
+    input.doctor_org_id,
+    input.appt_date,
+    input.slot_start
+  )
+
   revalidatePath('/dashboard/staff')
   return { success: true, appointment_id: data.id }
 }

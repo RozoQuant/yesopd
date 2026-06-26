@@ -57,13 +57,16 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
   }
 
   // 1. Re-verify slot is still available (race condition guard)
+  // FIX: count ALL active statuses, not just 'BOOKED'.
+  // Previously only counted BOOKED, so checked-in/in-progress patients
+  // created phantom vacancies, allowing overbooking.
   const { count } = await supabase
     .from('appointments')
     .select('*', { count: 'exact', head: true })
     .eq('doctor_org_id', input.doctor_org_id)
     .eq('appt_date', input.appt_date)
     .eq('slot_start', input.slot_start)
-    .eq('status', 'BOOKED')
+    .not('status', 'in', '("CANCELLED","NO_SHOW")')
 
   // Fetch capacity for this slot
   const bookingDay = new Date(input.appt_date)
@@ -82,12 +85,13 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
   }
 
   if (schedule?.daily_limit) {
+    // FIX: same fix for daily limit count
     const { count: dailyCount } = await supabase
       .from('appointments')
       .select('*', { count: 'exact', head: true })
       .eq('doctor_org_id', input.doctor_org_id)
       .eq('appt_date', input.appt_date)
-      .eq('status', 'BOOKED')
+      .not('status', 'in', '("CANCELLED","NO_SHOW")')
 
     if (dailyCount !== null && dailyCount >= schedule.daily_limit) {
       return { error: 'Daily appointment limit reached.' }
@@ -102,7 +106,7 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
     .eq('doctor_org_id', input.doctor_org_id)
     .eq('appt_date', input.appt_date)
     .eq('slot_start', input.slot_start)
-    .eq('status', 'BOOKED')
+    .not('status', 'in', '("CANCELLED","NO_SHOW")')
     .maybeSingle()
 
   if (duplicate) {
@@ -160,7 +164,6 @@ export async function cancelAppointmentAction(appointment_id: string, reason?: s
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // Verify ownership
   const { data: appt } = await supabase
     .from('appointments')
     .select('id, status, patient_id')
@@ -206,8 +209,6 @@ export async function rescheduleAppointmentAction(input: RescheduleInput) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-
-
   const { data: appt } = await supabase
     .from('appointments')
     .select('id, status, patient_id, doctor_org_id')
@@ -252,14 +253,14 @@ export async function rescheduleAppointmentAction(input: RescheduleInput) {
     }
   }
 
-  // Verify new slot capacity
+  // FIX: count ALL active statuses for new slot capacity check
   const { count } = await supabase
     .from('appointments')
     .select('*', { count: 'exact', head: true })
     .eq('doctor_org_id', appt.doctor_org_id)
     .eq('appt_date', input.new_date)
     .eq('slot_start', input.new_slot_start)
-    .eq('status', 'BOOKED')
+    .not('status', 'in', '("CANCELLED","NO_SHOW")')
 
   const bookingDay = new Date(input.new_date)
     .toLocaleDateString('en-US', { weekday: 'long' })
@@ -277,12 +278,13 @@ export async function rescheduleAppointmentAction(input: RescheduleInput) {
   }
 
   if (schedule?.daily_limit) {
+    // FIX: same fix for daily limit count
     const { count: dailyCount } = await supabase
       .from('appointments')
       .select('*', { count: 'exact', head: true })
       .eq('doctor_org_id', appt.doctor_org_id)
       .eq('appt_date', input.new_date)
-      .eq('status', 'BOOKED')
+      .not('status', 'in', '("CANCELLED","NO_SHOW")')
 
     if (dailyCount !== null && dailyCount >= schedule.daily_limit) {
       return { error: 'Daily appointment limit reached.' }
