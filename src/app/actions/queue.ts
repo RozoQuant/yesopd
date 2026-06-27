@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 // ── TYPES ─────────────────────────────────────────────────────
@@ -26,9 +26,13 @@ export interface SessionQueueResult {
 }
 
 // ── ASSIGN QUEUE NUMBER ───────────────────────────────────────
-// Replaces the Supabase RPC with pure application logic.
-// Uses queue_counters table as an atomic counter per doctor+date+session.
-// Token format: DRO-E-001 (doctor short code, session, sequential number)
+// Uses the admin client (service role) throughout so that RLS on
+// `appointments`, `queue_counters`, and `doctor_organizations`
+// never silently blocks reads or writes.
+// Previously used createClient() (anon key) which caused the
+// queue_number / queue_code write-back to silently fail when the
+// authenticated user (staff/receptionist) did not own the
+// appointment row.
 
 export async function assignQueueNumberAction(
   appointment_id: string,
@@ -36,17 +40,17 @@ export async function assignQueueNumberAction(
   appt_date: string,
   slot_start: string
 ): Promise<{ queue_code?: string; error?: string }> {
-  const supabase = await createClient()
+  // Always use admin client — bypasses RLS for all queue ops
+  const supabase = createAdminClient()
 
   // ── 1. Determine session from slot time ──────────────────
-  // Fetch schedules to find which session this slot belongs to
   const { data: schedules } = await supabase
     .from('doctor_schedules')
     .select('session_type, start_time, end_time')
     .eq('doctor_org_id', doctor_org_id)
     .eq('is_active', true)
 
-  const slotTime = slot_start.slice(0, 5) // normalize "13:00:00" → "13:00"
+  const slotTime = slot_start.slice(0, 5) // "13:00:00" → "13:00"
   let session_type: 'MORNING' | 'EVENING' = 'MORNING'
 
   if (schedules && schedules.length > 0) {
@@ -76,11 +80,6 @@ export async function assignQueueNumberAction(
   const sessionPrefix = session_type === 'MORNING' ? 'M' : 'E'
 
   // ── 3. Atomically increment counter ─────────────────────
-  // Try to increment existing counter row, or insert new one starting at 1.
-  // We use a simple upsert + re-fetch pattern. Not perfectly atomic under
-  // extreme concurrency but sufficient for OPD volumes (no 100 simultaneous bookings).
-
-  // Check if counter exists
   const { data: existing } = await supabase
     .from('queue_counters')
     .select('id, last_number')
@@ -131,10 +130,10 @@ export async function assignQueueNumberAction(
   }
 
   // ── 4. Build queue code ──────────────────────────────────
-  // Format: DRO-E-001
+  // Format: TWO-M-001
   const queue_code = `${docPrefix}-${sessionPrefix}-${String(queue_number).padStart(3, '0')}`
 
-  // ── 5. Write back to appointment ────────────────────────
+  // ── 5. Write back to appointment (admin client bypasses RLS) ──
   const { error: apptErr } = await supabase
     .from('appointments')
     .update({ queue_number, queue_code })
@@ -151,7 +150,7 @@ export async function getSessionQueueAction(
   doctor_org_id: string,
   date?: string
 ): Promise<{ data?: SessionQueueResult; error?: string }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const targetDate = date ?? new Date().toISOString().split('T')[0]
 
   const [morningRes, eveningRes] = await Promise.all([
@@ -183,7 +182,7 @@ export async function getSessionQueueAction(
 export async function markArrivedAction(
   appointment_id: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('appointments')
@@ -201,7 +200,7 @@ export async function markArrivedAction(
 export async function markCheckedInAction(
   appointment_id: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('appointments')
@@ -223,7 +222,7 @@ export async function markCheckedInAction(
 export async function markInProgressAction(
   appointment_id: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('appointments')
@@ -241,7 +240,7 @@ export async function markInProgressAction(
 export async function markCompletedAction(
   appointment_id: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('appointments')
@@ -259,7 +258,7 @@ export async function markCompletedAction(
 export async function markNoShowAction(
   appointment_id: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('appointments')
@@ -277,7 +276,7 @@ export async function markNoShowAction(
 export async function getOrgDoctorsAction(
   org_id: string
 ): Promise<{ data?: { doctor_org_id: string; doctor_name: string; short_code: string }[]; error?: string }> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('doctor_organizations')
