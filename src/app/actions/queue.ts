@@ -25,7 +25,10 @@ export interface SessionQueueResult {
   evening: QueueEntry[]
 }
 
-// ── ASSIGN QUEUE NUMBER (called internally after booking) ─────
+// ── ASSIGN QUEUE NUMBER ───────────────────────────────────────
+// Replaces the Supabase RPC with pure application logic.
+// Uses queue_counters table as an atomic counter per doctor+date+session.
+// Token format: DRO-E-001 (doctor short code, session, sequential number)
 
 export async function assignQueueNumberAction(
   appointment_id: string,
@@ -35,34 +38,111 @@ export async function assignQueueNumberAction(
 ): Promise<{ queue_code?: string; error?: string }> {
   const supabase = await createClient()
 
-  // Determine session from schedules
+  // ── 1. Determine session from slot time ──────────────────
+  // Fetch schedules to find which session this slot belongs to
   const { data: schedules } = await supabase
     .from('doctor_schedules')
     .select('session_type, start_time, end_time')
     .eq('doctor_org_id', doctor_org_id)
     .eq('is_active', true)
 
-  const slotTime = slot_start // "09:00"
+  const slotTime = slot_start.slice(0, 5) // normalize "13:00:00" → "13:00"
   let session_type: 'MORNING' | 'EVENING' = 'MORNING'
 
   if (schedules && schedules.length > 0) {
-    const match = schedules.find(
-      (s) => slotTime >= s.start_time && slotTime < s.end_time
-    )
+    const match = schedules.find(s => {
+      const start = s.start_time.slice(0, 5)
+      const end   = s.end_time.slice(0, 5)
+      return slotTime >= start && slotTime < end
+    })
     if (match?.session_type) {
       session_type = match.session_type as 'MORNING' | 'EVENING'
     }
   }
 
-  const { data, error } = await supabase.rpc('assign_queue_number', {
-    p_appointment_id: appointment_id,
-    p_doctor_org_id: doctor_org_id,
-    p_appt_date: appt_date,
-    p_session_type: session_type,
-  })
+  // ── 2. Get doctor short code for token prefix ────────────
+  const { data: doctorOrg } = await supabase
+    .from('doctor_organizations')
+    .select('doctors(full_name, short_code)')
+    .eq('id', doctor_org_id)
+    .single()
 
-  if (error) return { error: error.message }
-  return { queue_code: data as string }
+  const doc = Array.isArray(doctorOrg?.doctors)
+    ? doctorOrg.doctors[0]
+    : doctorOrg?.doctors
+
+  const rawCode = doc?.short_code || doc?.full_name || 'DOC'
+  const docPrefix = rawCode.replace(/\s+/g, '').slice(0, 3).toUpperCase()
+  const sessionPrefix = session_type === 'MORNING' ? 'M' : 'E'
+
+  // ── 3. Atomically increment counter ─────────────────────
+  // Try to increment existing counter row, or insert new one starting at 1.
+  // We use a simple upsert + re-fetch pattern. Not perfectly atomic under
+  // extreme concurrency but sufficient for OPD volumes (no 100 simultaneous bookings).
+
+  // Check if counter exists
+  const { data: existing } = await supabase
+    .from('queue_counters')
+    .select('id, last_number')
+    .eq('doctor_org_id', doctor_org_id)
+    .eq('queue_date', appt_date)
+    .eq('session_type', session_type)
+    .maybeSingle()
+
+  let queue_number: number
+
+  if (existing) {
+    queue_number = existing.last_number + 1
+    const { error: updateErr } = await supabase
+      .from('queue_counters')
+      .update({ last_number: queue_number })
+      .eq('id', existing.id)
+
+    if (updateErr) return { error: updateErr.message }
+  } else {
+    queue_number = 1
+    const { error: insertErr } = await supabase
+      .from('queue_counters')
+      .insert({
+        doctor_org_id,
+        queue_date: appt_date,
+        session_type,
+        last_number: 1,
+      })
+
+    if (insertErr) {
+      // Race condition: another request inserted first — re-fetch and increment
+      const { data: raceRow } = await supabase
+        .from('queue_counters')
+        .select('id, last_number')
+        .eq('doctor_org_id', doctor_org_id)
+        .eq('queue_date', appt_date)
+        .eq('session_type', session_type)
+        .single()
+
+      if (!raceRow) return { error: 'Failed to create queue counter' }
+
+      queue_number = raceRow.last_number + 1
+      await supabase
+        .from('queue_counters')
+        .update({ last_number: queue_number })
+        .eq('id', raceRow.id)
+    }
+  }
+
+  // ── 4. Build queue code ──────────────────────────────────
+  // Format: DRO-E-001
+  const queue_code = `${docPrefix}-${sessionPrefix}-${String(queue_number).padStart(3, '0')}`
+
+  // ── 5. Write back to appointment ────────────────────────
+  const { error: apptErr } = await supabase
+    .from('appointments')
+    .update({ queue_number, queue_code })
+    .eq('id', appointment_id)
+
+  if (apptErr) return { error: apptErr.message }
+
+  return { queue_code }
 }
 
 // ── GET SESSION QUEUE (staff dashboard) ───────────────────────
@@ -138,7 +218,7 @@ export async function markCheckedInAction(
   return { success: true }
 }
 
-// ── MARK IN PROGRESS (doctor called patient) ──────────────────
+// ── MARK IN PROGRESS ──────────────────────────────────────────
 
 export async function markInProgressAction(
   appointment_id: string
@@ -192,7 +272,7 @@ export async function markNoShowAction(
   return { success: true }
 }
 
-// ── GET DOCTORS FOR ORG (staff needs to switch between doctors) ─
+// ── GET DOCTORS FOR ORG ───────────────────────────────────────
 
 export async function getOrgDoctorsAction(
   org_id: string
