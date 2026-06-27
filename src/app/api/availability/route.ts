@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateSlots, getDayOfWeek, getDateRange } from '@/lib/availability'
-
+export const dynamic = 'force-dynamic'   
 /**
  * GET /api/availability?doctor_org_id=xxx&date=2024-01-15
  * GET /api/availability?doctor_org_id=xxx&from=2024-01-15&days=7  (week view)
