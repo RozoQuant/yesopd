@@ -57,11 +57,11 @@ export async function GET(request: NextRequest) {
 
   // ── 4. Fetch existing bookings for the date range ─────────
   const { data: bookings } = await supabase
-    .from('appointments')
-    .select('appt_date, slot_start')
-    .eq('doctor_org_id', doctor_org_id)
-    .in('appt_date', dateRange)
-    .in('status', ['BOOKED']) // only active bookings count
+      .from('appointments')
+      .select('appt_date, slot_start')
+      .eq('doctor_org_id', doctor_org_id)
+      .in('appt_date', dateRange)
+      .not('status', 'in', '("CANCELLED","NO_SHOW")')
 
   // Build booking count map: "date|slot_start" → count
   const bookingCount = new Map<string, number>()
