@@ -172,7 +172,10 @@ export default function QueueBoard({ org_id, initialDoctorOrgId }: Props) {
   const [doctors, setDoctors] = useState<{ doctor_org_id: string; doctor_name: string; short_code: string }[]>([])
   const [selectedDoctorOrgId, setSelectedDoctorOrgId] = useState<string>(initialDoctorOrgId ?? '')
   const [session, setSession] = useState<'MORNING' | 'EVENING'>('MORNING')
-  const [queueDate, setQueueDate] = useState(new Date().toISOString().split('T')[0])
+  const [queueDate, setQueueDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  })
   const [morning, setMorning] = useState<QueueEntry[]>([])
   const [evening, setEvening] = useState<QueueEntry[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)

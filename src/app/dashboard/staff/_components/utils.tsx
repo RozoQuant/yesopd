@@ -56,8 +56,12 @@ export function fmt12(t: string) {
   return `${hour}:${String(m).padStart(2, '0')} ${period}`
 }
 
-export function todayStr() {
-  return new Date().toISOString().split('T')[0]
+export function todayStr(): string {
+  const d = new Date()
+  const year  = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day   = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 // ── Modal shell (shared by all modals) ──────────────────────────

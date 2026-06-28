@@ -598,7 +598,7 @@ export default function ScheduleManager({ doctor_org_id }: { doctor_org_id: stri
             <input
               type="date"
               value={leaveDate}
-              min={new Date().toISOString().split('T')[0]}
+              min={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()}
               onChange={e => setLeaveDate(e.target.value)}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:border-[#006EFF] focus:outline-none"
             />

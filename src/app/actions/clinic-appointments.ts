@@ -8,7 +8,9 @@ export async function getClinicAppointmentsAction(
   date?: string
 ) {
   const supabase = await createClient()
-  const target = date ?? new Date().toISOString().split('T')[0]
+  const d = new Date()
+  const localToday = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  const target = date ?? localToday
 
   const { data, error } = await supabase
     .from('appointments')

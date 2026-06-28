@@ -26,7 +26,10 @@ export default function PatientAppointments() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('upcoming')
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = (() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  })()
 
   const load = useCallback(async () => {
     setLoading(true)

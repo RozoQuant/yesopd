@@ -4,6 +4,16 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { assignQueueNumberAction } from './queue'
 
+// ── LOCAL DATE HELPER ────────────────────────────────────────
+// new Date().toISOString() is always UTC which is wrong for IST (+5:30).
+// This helper formats the date in the server's local timezone.
+function localDateStr(d: Date = new Date()): string {
+  const year  = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day   = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // ── BOOK ──────────────────────────────────────────────────────
 
 export interface BookAppointmentInput {
@@ -379,7 +389,7 @@ export async function getUpcomingAppointmentsAction() {
 
   if (!user) return { error: 'Not authenticated' }
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateStr()
 
   const { data, error } = await supabase
     .from('appointments')

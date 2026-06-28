@@ -16,6 +16,14 @@ export interface AvailabilityResult {
   }[]
 }
 
+/** Returns YYYY-MM-DD in LOCAL timezone (not UTC) */
+export function localDateStr(d: Date = new Date()): string {
+  const year  = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day   = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const DAY_MAP: Record<number, DayOfWeek> = {
   0: 'SUN', 1: 'MON', 2: 'TUE', 3: 'WED', 4: 'THU', 5: 'FRI', 6: 'SAT',
 }
@@ -61,7 +69,7 @@ export function getDateRange(fromDate: string, days: number): string[] {
   for (let i = 0; i < days; i++) {
     const d = new Date(start)
     d.setDate(d.getDate() + i)
-    dates.push(d.toISOString().split('T')[0])
+    dates.push(localDateStr(d))
   }
   return dates
 }

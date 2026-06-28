@@ -30,7 +30,10 @@ const STATUS_STYLE: Record<ApptStatus, string> = {
 }
 
 export default function ClinicAppointmentsTab({ org_id }: { org_id: string }) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  })
   const [appointments, setAppointments] = useState<Appt[]>([])
   const [loading, setLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
