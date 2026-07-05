@@ -65,12 +65,13 @@ export default function ConfirmPage() {
         .single()
 
       switch (profile?.role) {
-        case 'SUPER_ADMIN': router.replace('/dashboard/admin'); break
-        case 'CLINIC_ADMIN': router.replace('/dashboard/clinic'); break
-        case 'STAFF': router.replace('/dashboard/staff'); break
-        case 'PATIENT': router.replace('/dashboard/patient'); break
-        default: router.replace('/auth/login')
-      }
+              case 'SUPER_ADMIN': router.replace('/dashboard/admin'); break
+              case 'CLINIC_ADMIN': router.replace('/dashboard/clinic'); break
+              case 'STAFF': router.replace('/dashboard/staff'); break
+              case 'PATIENT': router.replace('/dashboard/patient'); break
+              case 'DOCTOR': router.replace('/dashboard/doctor'); break
+              default: router.replace('/auth/login')
+            }
     }
 
     handleInvite()

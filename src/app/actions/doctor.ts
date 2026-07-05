@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // ── ADD DOCTOR TO ORG ─────────────────────────────────────────
 
@@ -141,6 +142,8 @@ export async function getDoctorsForOrgAction(org_id: string) {
       doctors (
         id,
         full_name,
+        email,
+        account_status,
         qualification,
         experience_yrs,
         status,
@@ -217,4 +220,58 @@ export async function getMyOrgAction() {
 
     if (error) return { error: error.message }
   return { data }
+}
+
+// ── INVITE DOCTOR TO PORTAL ───────────────────────────────────────
+
+export async function inviteDoctorAction(doctor_id: string, email: string) {
+  const supabase = await createClient()
+  const { data: { user: caller } } = await supabase.auth.getUser()
+  if (!caller) return { success: false, message: 'Not authenticated' }
+
+  const { data: callerProfile } = await supabase
+    .from('users').select('role').eq('id', caller.id).single()
+  if (callerProfile?.role !== 'CLINIC_ADMIN') {
+    return { success: false, message: 'Not authorised.' }
+  }
+
+  const admin = createAdminClient()
+  const cleanEmail = email.trim().toLowerCase()
+
+  const { data: doctor } = await admin
+    .from('doctors')
+    .select('id, full_name, account_status')
+    .eq('id', doctor_id)
+    .single()
+
+  if (!doctor) return { success: false, message: 'Doctor not found.' }
+  if (doctor.account_status !== 'NOT_INVITED') {
+    return { success: false, message: 'Doctor already has portal access or a pending invite.' }
+  }
+
+  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
+    redirectTo:
+      process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000/auth/confirm'
+        : 'https://www.yesopd.com/auth/confirm',
+    data: {
+      full_name: doctor.full_name,
+      role: 'DOCTOR',
+    },
+  })
+
+  if (inviteError) return { success: false, message: inviteError.message }
+
+  const userId = invited.user?.id
+  if (!userId) return { success: false, message: 'Failed to create doctor account.' }
+
+  const { error: updateErr } = await admin
+    .from('doctors')
+    .update({ user_id: userId, email: cleanEmail, account_status: 'INVITED' })
+    .eq('id', doctor_id)
+
+  if (updateErr) return { success: false, message: updateErr.message }
+
+  revalidatePath('/dashboard/clinic')
+  return { success: true, message: 'Invite sent successfully.' }
 }

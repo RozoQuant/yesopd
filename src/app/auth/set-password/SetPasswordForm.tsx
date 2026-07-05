@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import PasswordInput from '@/components/PasswordInput'
+import { ROLE_REDIRECTS, UserRole } from '@/types'
 
 export default function SetPasswordForm() {
   const supabase = createClient()
@@ -37,11 +38,26 @@ export default function SetPasswordForm() {
     }
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('staff').update({ status: 'ACTIVE' }).eq('user_id', user.id)
+    if (!user) {
+      router.replace('/auth/login')
+      return
     }
 
-    router.replace('/dashboard/staff')
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const role = profile?.role as UserRole | undefined
+
+    if (role === 'STAFF') {
+      await supabase.from('staff').update({ status: 'ACTIVE' }).eq('user_id', user.id)
+    } else if (role === 'DOCTOR') {
+      await supabase.from('doctors').update({ account_status: 'ACTIVE' }).eq('user_id', user.id)
+    }
+
+    router.replace(role ? ROLE_REDIRECTS[role] : '/auth/login')
   }
 
   return (

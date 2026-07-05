@@ -1,4 +1,4 @@
-export type UserRole = 'PATIENT' | 'CLINIC_ADMIN' | 'STAFF' | 'SUPER_ADMIN'
+export type UserRole = 'PATIENT' | 'CLINIC_ADMIN' | 'STAFF' | 'SUPER_ADMIN' | 'DOCTOR'
 export type OrgType = 'CLINIC' | 'HOSPITAL'
 export type OrgStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED'
 export type DoctorStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE'
@@ -7,6 +7,9 @@ export type AppointmentSource = 'YESOPD' | 'WALK_IN' | 'PHONE' | 'WHATSAPP'
 export type PaymentMode = 'PAY_AT_CLINIC' | 'ADVANCE_PAYMENT' | 'PARTIAL_PAYMENT'
 export type NotificationType = 'BOOKING_CONFIRMATION' | 'APPOINTMENT_REMINDER' | 'APPOINTMENT_CANCELLATION'
 export type DayOfWeek = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN'
+export type ConsultationMode = 'IN_PERSON' | 'TELECONSULT' | 'BOTH'
+export type ConsultationType = 'IN_PERSON' | 'TELECONSULT'
+export type DoctorAccountStatus = 'NOT_INVITED' | 'INVITED' | 'ACTIVE'
 
 export interface User {
   id: string
@@ -43,6 +46,8 @@ export interface Doctor {
   id: string
   user_id: string | null
   full_name: string
+  email: string | null
+  account_status: DoctorAccountStatus
   photo_url: string | null
   qualification: string | null
   experience_yrs: number
@@ -63,6 +68,8 @@ export interface DoctorOrganization {
   doctor_id: string
   org_id: string
   consultation_fee: number
+  consultation_mode: ConsultationMode
+  auto_advance_queue: boolean
   is_active: boolean
   created_at: string
 }
@@ -77,6 +84,10 @@ export interface Appointment {
   status: AppointmentStatus
   source: AppointmentSource
   payment_mode: PaymentMode
+  consultation_type: ConsultationType
+  daily_room_name: string | null
+  daily_room_url: string | null
+  daily_room_created_at: string | null
   patient_notes: string | null
   cancel_reason: string | null
   queue_number: number | null
@@ -92,6 +103,7 @@ export const ROLE_REDIRECTS: Record<UserRole, string> = {
   CLINIC_ADMIN: '/dashboard/clinic',
   STAFF: '/dashboard/staff',
   SUPER_ADMIN: '/dashboard/admin',
+  DOCTOR: '/dashboard/doctor',
 }
 
 // Protected route prefixes per role
@@ -100,4 +112,5 @@ export const PROTECTED_ROUTES: Record<string, UserRole[]> = {
   '/dashboard/clinic': ['CLINIC_ADMIN'],
   '/dashboard/staff': ['STAFF', 'CLINIC_ADMIN'],
   '/dashboard/admin': ['SUPER_ADMIN'],
+  '/dashboard/doctor': ['DOCTOR'],
 }

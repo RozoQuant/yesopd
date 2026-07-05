@@ -19,19 +19,17 @@ export default async function HomePage() {
     .single()
 
   switch (profile?.role) {
-    case 'SUPER_ADMIN':
-      redirect('/dashboard/admin')
-
-    case 'CLINIC_ADMIN':
-      redirect('/dashboard/clinic')
-
-    case 'STAFF':
-      redirect('/dashboard/staff')
-
-    case 'PATIENT':
-      redirect('/dashboard/patient')
-
-    default:
-      redirect('/auth/login')
-  }
+      case 'SUPER_ADMIN':
+        redirect('/dashboard/admin')
+      case 'CLINIC_ADMIN':
+        redirect('/dashboard/clinic')
+      case 'STAFF':
+        redirect('/dashboard/staff')
+      case 'PATIENT':
+        redirect('/dashboard/patient')
+      case 'DOCTOR':
+        redirect('/dashboard/doctor')
+      default:
+        redirect('/auth/login')
+    }
 }

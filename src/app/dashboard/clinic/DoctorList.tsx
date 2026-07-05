@@ -7,6 +7,7 @@ import {
 } from '@/app/actions/doctor'
 import AddDoctorForm from './AddDoctorForm'
 import ScheduleManager from './ScheduleManager'
+import { inviteDoctorAction } from '@/app/actions/doctor'
 
 interface Specialization { id: number; name: string }
 
@@ -21,6 +22,8 @@ interface DoctorOrgRow {
     qualification: string | null
     experience_yrs: number
     status: string
+    email: string | null
+    account_status: 'NOT_INVITED' | 'INVITED' | 'ACTIVE'
     is_approved: boolean
     photo_url: string | null
     languages: string[]
@@ -117,7 +120,14 @@ export default function DoctorList({ org_id, initialDoctors, specializations }: 
                       Inactive
                     </span>
                   )}
+
+                  <InviteDoctorControl
+                    doctorId={d.id}
+                    accountStatus={d.account_status}
+                    onInvited={reload}
+                  />
                 </div>
+
                 {d.qualification && (
                   <p className="text-xs text-gray-500 mt-0.5">{d.qualification}</p>
                 )}
@@ -160,5 +170,52 @@ export default function DoctorList({ org_id, initialDoctors, specializations }: 
         )
       })}
     </div>
+  )
+}
+
+function InviteDoctorControl({
+  doctorId, accountStatus, onInvited,
+}: { doctorId: string; accountStatus: 'NOT_INVITED' | 'INVITED' | 'ACTIVE'; onInvited: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [email, setEmail] = useState('')
+  const [isPending, startTransition] = useTransition()
+  const [msg, setMsg] = useState<string | null>(null)
+
+  if (accountStatus === 'ACTIVE') {
+    return <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">Portal Active</span>
+  }
+  if (accountStatus === 'INVITED') {
+    return <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full">Invite Sent</span>
+  }
+
+  function handleInvite() {
+    if (!email.trim()) { setMsg('Email required'); return }
+    setMsg(null)
+    startTransition(async () => {
+      const r = await inviteDoctorAction(doctorId, email)
+      setMsg(r.message)
+      if (r.success) onInvited()
+    })
+  }
+
+  return open ? (
+    <div className="flex items-center gap-1.5">
+      <input
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        placeholder="doctor@email.com"
+        type="email"
+        className="text-xs border border-gray-200 rounded-lg px-2 py-1 w-40 focus:border-[#006EFF] focus:outline-none"
+      />
+      <button onClick={handleInvite} disabled={isPending}
+        className="text-xs font-medium text-white bg-[#006EFF] px-2 py-1 rounded-lg disabled:opacity-50">
+        {isPending ? '…' : 'Send'}
+      </button>
+      {msg && <span className="text-xs text-gray-500">{msg}</span>}
+    </div>
+  ) : (
+    <button onClick={() => setOpen(true)} className="text-xs text-[#006EFF] hover:underline">
+      + Invite to portal
+    </button>
   )
 }
