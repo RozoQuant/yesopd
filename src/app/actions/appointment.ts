@@ -22,6 +22,7 @@ export interface BookAppointmentInput {
   slot_start: string  // "10:00"
   slot_end: string    // "11:00"
   patient_notes?: string
+  consultation_type?: 'IN_PERSON' | 'TELECONSULT'
 }
 
 export async function bookAppointmentAction(input: BookAppointmentInput) {
@@ -31,6 +32,30 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
   } = await supabase.auth.getUser()
 
   if (!user) return { error: 'Not authenticated' }
+
+  // Validate requested consultation type against doctor's consultation mode
+  const { data: doctorOrgRow, error: doctorOrgError } = await supabase
+    .from('doctor_organizations')
+    .select('consultation_mode')
+    .eq('id', input.doctor_org_id)
+    .single()
+
+  if (doctorOrgError || !doctorOrgRow) {
+    return { error: 'Doctor not found.' }
+  }
+
+  const requestedType = input.consultation_type ?? 'IN_PERSON'
+  const mode = doctorOrgRow.consultation_mode
+
+  if (mode !== 'BOTH') {
+    if (requestedType === 'TELECONSULT' && mode === 'IN_PERSON') {
+      return { error: 'This doctor does not offer video consultations.' }
+    }
+
+    if (requestedType === 'IN_PERSON' && mode === 'TELECONSULT') {
+      return { error: 'This doctor only offers video consultations.' }
+    }
+  }
 
   const { data: rules } = await supabase
     .from('booking_rules')
@@ -136,6 +161,7 @@ export async function bookAppointmentAction(input: BookAppointmentInput) {
       source: 'YESOPD',
       payment_mode: 'PAY_AT_CLINIC',
       patient_notes: input.patient_notes ?? null,
+      consultation_type: requestedType,
     })
     .select('id')
     .single()
@@ -334,6 +360,7 @@ export async function getMyAppointmentsAction() {
       slot_start,
       slot_end,
       status,
+      consultation_type,
       patient_notes,
       booked_at,
       doctor_organizations (
@@ -399,6 +426,7 @@ export async function getUpcomingAppointmentsAction() {
       slot_start,
       slot_end,
       status,
+      consultation_type,
       doctor_organizations (
         consultation_fee,
         doctors (

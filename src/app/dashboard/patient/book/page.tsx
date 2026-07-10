@@ -16,6 +16,7 @@ interface DoctorResult {
   org_city: string
   org_address: string | null
   consultation_fee: number
+  consultation_mode: 'IN_PERSON' | 'TELECONSULT' | 'BOTH'
 }
 
 type Step = 'search' | 'slots' | 'confirm'
@@ -32,6 +33,7 @@ export default function BookPage() {
   const [notes, setNotes] = useState('')
   const [bookError, setBookError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [consultationType, setConsultationType] = useState<'IN_PERSON' | 'TELECONSULT'>('IN_PERSON')
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -47,6 +49,13 @@ export default function BookPage() {
     setSelected(doc)
     setPickedDate('')
     setPickedSlot(null)
+
+    if (doc.consultation_mode === 'TELECONSULT') {
+      setConsultationType('TELECONSULT')
+    } else {
+      setConsultationType('IN_PERSON')
+    }
+
     setStep('slots')
   }
 
@@ -66,6 +75,7 @@ export default function BookPage() {
         slot_start: pickedSlot.start,
         slot_end: pickedSlot.end,
         patient_notes: notes || undefined,
+        consultation_type: consultationType,
       })
       if (result?.error) {
         setBookError(result.error)
@@ -199,6 +209,54 @@ export default function BookPage() {
                   <span className="text-gray-500">Payment</span>
                   <span>Pay at clinic</span>
                 </div>
+
+                {/* Consultation Type */}
+                <div className="pt-3 border-t border-gray-100">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Consultation Type
+                  </p>
+
+                  {selected.consultation_mode === 'IN_PERSON' && (
+                    <div className="text-sm text-gray-700">
+                      🏥 In Person
+                    </div>
+                  )}
+
+                  {selected.consultation_mode === 'TELECONSULT' && (
+                    <div className="text-sm text-gray-700">
+                      💻 Video Consultation
+                    </div>
+                  )}
+
+                  {selected.consultation_mode === 'BOTH' && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConsultationType('IN_PERSON')}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm transition ${
+                          consultationType === 'IN_PERSON'
+                            ? 'bg-[#006EFF] text-white border-[#006EFF]'
+                            : 'bg-white border-gray-200 text-gray-700'
+                        }`}
+                      >
+                        🏥 In Person
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setConsultationType('TELECONSULT')}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm transition ${
+                          consultationType === 'TELECONSULT'
+                            ? 'bg-[#006EFF] text-white border-[#006EFF]'
+                            : 'bg-white border-gray-200 text-gray-700'
+                        }`}
+                      >
+                        💻 Video Consultation
+                      </button>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
 

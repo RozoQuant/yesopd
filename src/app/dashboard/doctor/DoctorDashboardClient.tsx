@@ -11,6 +11,8 @@ import {
   doctorNoShowAction,
   toggleAutoAdvanceAction,
 } from '@/app/actions/doctor-queue'
+import TeleconsultLauncher from '@/components/teleconsult/TeleconsultLauncher'
+
 
 type ApptStatus = 'BOOKED' | 'CHECKED_IN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
 
@@ -25,7 +27,6 @@ interface QueueItem {
   patient_notes: string | null
   queue_number: number | null
   queue_code: string | null
-  daily_room_url: string | null
   patients: { id: string; users: { full_name: string; phone: string | null } } | null
 }
 
@@ -259,11 +260,12 @@ function QueueCard({
 
       {item.status === 'IN_PROGRESS' && (
         <div className="flex gap-2 mt-2">
-          {item.consultation_type === 'TELECONSULT' && item.daily_room_url && (
-            <a href={item.daily_room_url} target="_blank" rel="noreferrer"
-              className="flex-1 text-center text-xs font-medium bg-purple-500 text-white rounded-lg py-1.5 hover:bg-purple-600 transition">
-              Join Call
-            </a>
+          {item.consultation_type === 'TELECONSULT' && (
+            <TeleconsultLauncher
+              appointmentId={item.id}
+              isDoctor
+              label="Join Call"
+            />
           )}
           <button onClick={onComplete} disabled={isPending}
             className="flex-1 text-xs font-medium bg-green-500 text-white rounded-lg py-1.5 hover:bg-green-600 disabled:opacity-40 transition">

@@ -85,9 +85,11 @@ export interface Appointment {
   source: AppointmentSource
   payment_mode: PaymentMode
   consultation_type: ConsultationType
-  daily_room_name: string | null
-  daily_room_url: string | null
-  daily_room_created_at: string | null
+  video_provider: string
+  video_room_name: string | null
+  video_room_sid: string | null
+  video_room_created_at: string | null
+  video_ended_at: string | null
   patient_notes: string | null
   cancel_reason: string | null
   queue_number: number | null

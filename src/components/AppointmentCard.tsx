@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { cancelAppointmentAction } from '@/app/actions/appointment'
 import type { AppointmentStatus } from '@/types'
+import TeleconsultLauncher from '@/components/teleconsult/TeleconsultLauncher'
 
 const STATUS_STYLES: Record<AppointmentStatus, string> = {
   BOOKED:      'bg-blue-50 text-blue-700 border-blue-200',
@@ -19,6 +20,7 @@ interface Props {
   slot_start: string
   slot_end: string
   status: AppointmentStatus
+  consultation_type: 'IN_PERSON' | 'TELECONSULT'
   doctor_name: string
   doctor_qualification: string | null
   org_name: string
@@ -28,7 +30,7 @@ interface Props {
 }
 
 export default function AppointmentCard({
-  id, appt_date, slot_start, slot_end, status,
+  id, appt_date, slot_start, slot_end, status,consultation_type,
   doctor_name, doctor_qualification, org_name, org_city,
   consultation_fee, onCancelled,
 }: Props) {
@@ -80,7 +82,19 @@ export default function AppointmentCard({
       )}
 
       {status === 'BOOKED' && (
-        <div className="mt-4 pt-4 border-t border-gray-50 flex gap-3">
+        <div className="mt-4 pt-4 border-t border-gray-50">
+
+          {consultation_type === 'TELECONSULT' && (
+            <div className="mb-3">
+              <TeleconsultLauncher
+                appointmentId={id}
+                isDoctor={false}
+                label="Join Video Call"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-3">
           {!showConfirm ? (
             <button
               onClick={() => setShowConfirm(true)}
@@ -107,7 +121,8 @@ export default function AppointmentCard({
             </div>
           )}
         </div>
-      )}
+      </div>
+    )}
     </div>
   )
 }

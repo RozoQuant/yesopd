@@ -11,6 +11,7 @@ interface Appt {
   slot_start: string
   slot_end: string
   status: AppointmentStatus
+  consultation_type: 'IN_PERSON' | 'TELECONSULT'
   patient_notes: string | null
   doctor_organizations: {
     consultation_fee: number
@@ -87,6 +88,7 @@ export default function PatientAppointments() {
               slot_start={a.slot_start}
               slot_end={a.slot_end}
               status={a.status}
+              consultation_type={a.consultation_type}
               doctor_name={a.doctor_organizations?.doctors?.full_name ?? '—'}
               doctor_qualification={a.doctor_organizations?.doctors?.qualification ?? null}
               org_name={a.doctor_organizations?.organizations?.name ?? '—'}

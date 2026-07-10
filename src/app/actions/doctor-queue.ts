@@ -72,7 +72,7 @@ export async function getDoctorQueueAction(doctor_org_id: string, date: string) 
     .from('appointments')
     .select(`
       id, appt_date, slot_start, slot_end, status, source, consultation_type,
-      patient_notes, queue_number, queue_code, daily_room_url,
+      patient_notes, queue_number, queue_code,
       patients!inner ( id, users!inner ( full_name, phone ) )
     `)
     .eq('doctor_org_id', doctor_org_id)

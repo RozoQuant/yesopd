@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     .select(`
       id,
       consultation_fee,
+      consultation_mode,
       doctors!inner (
         id,
         full_name,
@@ -124,6 +125,7 @@ export async function GET(request: NextRequest) {
       org_city: o?.city,
       org_address: o?.address_line1,
       consultation_fee: row.consultation_fee,
+      consultation_mode: row.consultation_mode,
     }
   })
 
