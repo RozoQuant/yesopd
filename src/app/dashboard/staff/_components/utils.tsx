@@ -24,6 +24,7 @@ export interface QueueItem {
 export interface Doctor {
   id: string
   consultation_fee: number
+  consultation_mode: 'IN_PERSON' | 'TELECONSULT' | 'BOTH'
   doctors: { id: string; full_name: string; qualification: string | null } | null
 }
 

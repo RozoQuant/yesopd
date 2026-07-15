@@ -30,6 +30,7 @@ export function CreateApptModal({
   const [isPending, start] = useTransition()
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [consultationType, setConsultationType] = useState<'IN_PERSON' | 'TELECONSULT'>('IN_PERSON')
 
   // ── Step 1: patient info ──────────────────────────────────
   const [wName, setWName] = useState('')
@@ -87,6 +88,17 @@ export function CreateApptModal({
     if (step === 2) loadSlots(doctorOrgId, date)
   }, [step, doctorOrgId, date])
 
+  useEffect(() => {
+  const mode = doctors.find(d => d.id === doctorOrgId)?.consultation_mode
+
+  if (mode === 'TELECONSULT') {
+    setConsultationType('TELECONSULT')
+  } else if (mode === 'IN_PERSON') {
+    setConsultationType('IN_PERSON')
+  }
+  // if BOTH, keep current selection
+  }, [doctorOrgId, doctors])
+
   async function doSearch(q: string) {
     if (q.length < 2) { setSearchResults([]); return }
     const r = await searchPatientsAction(q, org.id)
@@ -135,6 +147,7 @@ export function CreateApptModal({
           slot_start: slotStart,
           slot_end: slotEnd,
           patient_notes: notes || undefined,
+          consultation_type: consultationType,
         })
         if (r.error) { setError(r.error); return }
         setSuccess(`Walk-in registered! Queue #${r.queue_number}`)
@@ -148,6 +161,7 @@ export function CreateApptModal({
           slot_end: slotEnd,
           patient_notes: notes || undefined,
           source,
+          consultation_type: consultationType,
         })
         if (r.error) { setError(r.error); return }
         setSuccess('Appointment booked!')
@@ -356,6 +370,33 @@ export function CreateApptModal({
             </div>
           )}
 
+          {selectedDoctor?.consultation_mode === 'BOTH' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Consultation Type
+              </label>
+
+              <div className="flex gap-2">
+                {(['IN_PERSON', 'TELECONSULT'] as const).map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setConsultationType(type)}
+                    className={`flex-1 rounded-xl border py-2.5 text-xs font-medium transition ${
+                      consultationType === type
+                        ? 'bg-[#006EFF] text-white border-[#006EFF]'
+                        : 'bg-white border-gray-200 text-gray-600'
+                    }`}
+                  >
+                    {type === 'IN_PERSON'
+                      ? '🏥 In Person'
+                      : '💻 Video'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Date</label>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -474,6 +515,14 @@ export function CreateApptModal({
             <div className="px-4 py-3 flex justify-between items-center">
               <span className="text-xs text-gray-400">Doctor</span>
               <span className="text-sm text-gray-700">{selectedDoctor?.doctors?.full_name}</span>
+            </div>
+            <div className="px-4 py-3 flex justify-between items-center">
+              <span className="text-xs text-gray-400">Consultation</span>
+              <span className="text-sm text-gray-700">
+                {consultationType === 'IN_PERSON'
+                  ? '🏥 In Person'
+                  : '💻 Video'}
+              </span>
             </div>
             <div className="px-4 py-3 flex justify-between items-center">
               <span className="text-xs text-gray-400">Date</span>

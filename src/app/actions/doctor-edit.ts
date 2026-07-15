@@ -13,6 +13,7 @@ export interface UpdateDoctorInput {
   languages?: string[]
   photo_url?: string
   consultation_fee: number
+  consultation_mode?: 'IN_PERSON' | 'TELECONSULT' | 'BOTH'
   specialization_ids?: number[]
 }
 
@@ -60,7 +61,12 @@ export async function updateDoctorAction(input: UpdateDoctorInput) {
   //    addDoctorAction writes it on create)
   const { error: linkErr } = await supabase
     .from('doctor_organizations')
-    .update({ consultation_fee: input.consultation_fee })
+    .update({
+      consultation_fee: input.consultation_fee,
+      ...(input.consultation_mode
+        ? { consultation_mode: input.consultation_mode }
+        : {}),
+    })
     .eq('id', input.doctor_org_id)
 
   if (linkErr) return { error: linkErr.message }

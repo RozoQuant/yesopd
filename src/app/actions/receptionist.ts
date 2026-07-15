@@ -122,6 +122,7 @@ export interface WalkInInput {
   slot_start: string
   slot_end: string
   patient_notes?: string
+  consultation_type?: 'IN_PERSON' | 'TELECONSULT'
 }
 
 export async function registerWalkInAction(input: WalkInInput) {
@@ -285,6 +286,7 @@ export interface CreateApptInput {
   slot_end: string
   patient_notes?: string
   source?: 'YESOPD' | 'PHONE' | 'WHATSAPP' | 'WALK_IN'
+  consultation_type?: 'IN_PERSON' | 'TELECONSULT'
 }
 
 export async function createAppointmentAction(input: CreateApptInput) {
@@ -315,6 +317,7 @@ export async function createAppointmentAction(input: CreateApptInput) {
       source: input.source ?? 'PHONE',
       payment_mode: 'PAY_AT_CLINIC',
       patient_notes: input.patient_notes ?? null,
+      consultation_type: input.consultation_type ?? 'IN_PERSON',
     })
     .select('id')
     .single()

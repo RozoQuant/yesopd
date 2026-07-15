@@ -16,6 +16,8 @@ export default function AddDoctorForm({ org_id, specializations, onClose, onSave
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [selectedSpecs, setSelectedSpecs] = useState<number[]>([])
+  const [consultationMode, setConsultationMode] = useState<'IN_PERSON' | 'TELECONSULT' | 'BOTH'>('IN_PERSON')
+
 
   function toggleSpec(id: number) {
     setSelectedSpecs(prev =>
@@ -35,6 +37,7 @@ export default function AddDoctorForm({ org_id, specializations, onClose, onSave
         qualification: (fd.get('qualification') as string) || undefined,
         experience_yrs: Number(fd.get('experience_yrs') ?? 0),
         consultation_fee: Number(fd.get('consultation_fee')),
+        consultation_mode: consultationMode,
         bio: (fd.get('bio') as string) || undefined,
         languages: ((fd.get('languages') as string) || '')
           .split(',')
@@ -86,6 +89,31 @@ export default function AddDoctorForm({ org_id, specializations, onClose, onSave
               <label className="label">Consultation fee (₹) *</label>
               <input name="consultation_fee" type="number" min={0} required placeholder="500" className="input" />
             </div>
+            <div className="col-span-2">
+              <label className="label">Consultation Type</label>
+
+              <div className="flex gap-2">
+                {([
+                  { v: 'IN_PERSON', label: '🏥 In-Person' },
+                  { v: 'TELECONSULT', label: '💻 Video Only' },
+                  { v: 'BOTH', label: '🏥💻 Both' },
+                ] as const).map(option => (
+                  <button
+                    key={option.v}
+                    type="button"
+                    onClick={() => setConsultationMode(option.v)}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-xs transition ${
+                      consultationMode === option.v
+                        ? 'border-[#006EFF] bg-[#006EFF] text-white'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-[#006EFF]'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="col-span-2">
               <label className="label">Languages (comma separated)</label>
               <input name="languages" placeholder="Hindi, English" className="input" />

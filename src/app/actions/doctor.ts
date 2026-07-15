@@ -15,6 +15,7 @@ export interface AddDoctorInput {
   languages?: string[]
   photo_url?: string
   consultation_fee: number
+  consultation_mode?: 'IN_PERSON' | 'TELECONSULT' | 'BOTH'
   specialization_ids?: number[]
 }
 
@@ -62,6 +63,7 @@ export async function addDoctorAction(input: AddDoctorInput) {
       doctor_id: doctor.id,
       org_id: input.org_id,
       consultation_fee: input.consultation_fee,
+      consultation_mode: input.consultation_mode ?? 'IN_PERSON',   
       is_active: true,
     })
     .select('id')
@@ -138,6 +140,7 @@ export async function getDoctorsForOrgAction(org_id: string) {
     .select(`
       id,
       consultation_fee,
+      consultation_mode,
       is_active,
       doctors (
         id,
@@ -185,6 +188,23 @@ export async function setDoctorActiveAction(doctor_org_id: string, is_active: bo
   revalidatePath('/dashboard/clinic')
   return { success: true }
 }
+
+// ── UPDATE CONSULTATION MODE ─────────────────────────────────
+export async function setConsultationModeAction(
+  doctor_org_id: string,
+  mode: 'IN_PERSON' | 'TELECONSULT' | 'BOTH'
+) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('doctor_organizations')
+    .update({ consultation_mode: mode })
+    .eq('id', doctor_org_id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/clinic')
+  return { success: true }
+}
+
 
 // ── GET SPECIALIZATIONS (for add doctor form) ─────────────────
 

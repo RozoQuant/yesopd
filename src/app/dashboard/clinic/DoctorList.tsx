@@ -18,6 +18,7 @@ interface Specialization { id: number; name: string }
 interface DoctorOrgRow {
   id: string
   consultation_fee: number
+  consultation_mode: 'IN_PERSON' | 'TELECONSULT' | 'BOTH'
   is_active: boolean
   doctors: {
     id: string
@@ -102,6 +103,7 @@ export default function DoctorList({ org_id, initialDoctors, specializations }: 
             languages: editTarget.doctors.languages,
             photo_url: editTarget.doctors.photo_url,
             consultation_fee: editTarget.consultation_fee,
+            consultation_mode: editTarget.consultation_mode,   
             specialization_ids: editTarget.doctors.doctor_specializations
               .map(ds => ds.specializations?.id)
               .filter((id): id is number => typeof id === 'number'),
@@ -163,6 +165,12 @@ export default function DoctorList({ org_id, initialDoctors, specializations }: 
                   <p className="text-xs text-gray-400 mt-1">{specs.join(', ')}</p>
                 )}
                 <p className="text-xs text-[#006EFF] font-medium mt-1">₹{row.consultation_fee} consultation fee</p>
+                <p className="text-xs text-[#006EFF] font-medium mt-1">
+                  ₹{row.consultation_fee} consultation fee
+                  <span className="ml-2 text-gray-400">
+                    · {row.consultation_mode === 'BOTH' ? 'In-person & Video' : row.consultation_mode === 'TELECONSULT' ? 'Video only' : 'In-person only'}
+                  </span>
+                </p>
               </div>
 
               <div className="flex flex-col items-end gap-2 shrink-0">
