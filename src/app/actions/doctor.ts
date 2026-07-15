@@ -150,6 +150,7 @@ export async function getDoctorsForOrgAction(org_id: string) {
         is_approved,
         photo_url,
         languages,
+        bio,                    
         doctor_specializations (
           specializations ( id, name )
         )
