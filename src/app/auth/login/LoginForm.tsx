@@ -7,7 +7,7 @@ import PasswordInput from '@/components/PasswordInput'
 
 const initialState = { error: undefined as string | undefined }
 
-export default function LoginForm() {
+export default function LoginForm({ next }: { next?: string }) {
   const [state, formAction, isPending] = useActionState(
     async (_prev: typeof initialState, formData: FormData) => {
       const result = await loginAction(formData)
@@ -18,6 +18,8 @@ export default function LoginForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      {next && <input type="hidden" name="next" value={next} />}
+
       {state?.error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {state.error}

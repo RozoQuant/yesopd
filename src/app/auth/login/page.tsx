@@ -1,7 +1,16 @@
 import Link from 'next/link'
 import LoginForm from './LoginForm'
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  // Typed as either — works whether your Next version resolves
+  // searchParams as a plain object or a Promise.
+  searchParams: Promise<{ next?: string }> | { next?: string }
+}) {
+  const resolved = await searchParams
+  const next = resolved?.next
+
   return (
     <div className="w-full max-w-md">
       {/* Logo */}
@@ -13,7 +22,7 @@ export default function LoginPage() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h1 className="text-xl font-semibold text-[#1A1A2E] mb-6">Sign in</h1>
-        <LoginForm />
+        <LoginForm next={next} />
         <p className="mt-6 text-center text-sm text-gray-500">
           Don&apos;t have an account?{' '}
           <Link

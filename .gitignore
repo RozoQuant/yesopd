@@ -38,6 +38,8 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+playwright.config.ts
+example.spec.ts
 
 nism-ra.txt
 projectprogress.txt
@@ -46,3 +48,11 @@ src folder structure.txt
 build-src-context.ps1
 Build AI Context.cmd
 YESOPD_SRC_Context.txt
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

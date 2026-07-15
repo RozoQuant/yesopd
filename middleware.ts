@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createMiddlewareClient } from '@/lib/supabase/server'
+import { safeRedirectPath } from '@/lib/safe-redirect'
 import { PROTECTED_ROUTES, ROLE_REDIRECTS, UserRole } from '@/types'
 
 export async function middleware(request: NextRequest) {
@@ -29,8 +30,9 @@ export async function middleware(request: NextRequest) {
       const { data: profile } = await supabase
         .from('users').select('role').eq('id', user.id).single()
       const role = profile?.role as UserRole | undefined
+      const next = safeRedirectPath(request.nextUrl.searchParams.get('next'))
       return NextResponse.redirect(
-        new URL(role ? ROLE_REDIRECTS[role] : '/auth/login', request.url)
+        new URL(next ?? (role ? ROLE_REDIRECTS[role] : '/auth/login'), request.url)
       )
     }
     return response

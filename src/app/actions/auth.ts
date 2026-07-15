@@ -2,9 +2,10 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { safeRedirectPath } from '@/lib/safe-redirect'
 import { ROLE_REDIRECTS, UserRole } from '@/types'
 
-// ── SIGNUP ────────────────────────────────────────────────────
+// ── SIGNUP ──────────────────────────────────────────────────────────
 
 export async function signupAction(formData: FormData) {
   const supabase = await createClient()
@@ -32,13 +33,16 @@ export async function signupAction(formData: FormData) {
   redirect(ROLE_REDIRECTS[role])
 }
 
-// ── LOGIN ─────────────────────────────────────────────────────
+// ── LOGIN ───────────────────────────────────────────────────────────
 
 export async function loginAction(formData: FormData) {
   const supabase = await createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
+  // Optional deep link — e.g. "/dashboard/patient/book?doctor_org_id=..."
+  // set by LoginForm from the page's ?next= search param.
+  const next = safeRedirectPath(formData.get('next') as string | null)
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -85,10 +89,14 @@ export async function loginAction(formData: FormData) {
 
   const role = profile?.role as UserRole | undefined
 
-  redirect(role ? ROLE_REDIRECTS[role] : '/auth/login')
+  // Honour the deep link if one was carried through the form. It's safe to
+  // trust here even across roles — middleware's PROTECTED_ROUTES guard runs
+  // on every request afterwards and will bounce the person to their own
+  // ROLE_REDIRECTS destination if `next` doesn't belong to their role.
+  redirect(next ?? (role ? ROLE_REDIRECTS[role] : '/auth/login'))
 }
 
-// ── LOGOUT ────────────────────────────────────────────────────
+// ── LOGOUT ──────────────────────────────────────────────────────────
 
 export async function logoutAction() {
   const supabase = await createClient()

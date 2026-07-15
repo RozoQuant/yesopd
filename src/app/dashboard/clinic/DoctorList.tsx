@@ -6,12 +6,15 @@ import {
   setDoctorActiveAction,
 } from '@/app/actions/doctor'
 import AddDoctorForm from './AddDoctorForm'
+import EditDoctorForm from './EditDoctorForm'
 import ScheduleManager from './ScheduleManager'
 import { inviteDoctorAction } from '@/app/actions/doctor'
 
 interface Specialization { id: number; name: string }
 
 // Shape returned by getDoctorsForOrgAction
+// NOTE: this requires `bio` to be added to the select() in
+// getDoctorsForOrgAction (src/app/actions/doctor.ts) — see patch README.
 interface DoctorOrgRow {
   id: string
   consultation_fee: number
@@ -27,6 +30,7 @@ interface DoctorOrgRow {
     is_approved: boolean
     photo_url: string | null
     languages: string[]
+    bio: string | null
     doctor_specializations: {
       specializations: { id: number; name: string } | null
     }[]
@@ -42,6 +46,7 @@ interface Props {
 export default function DoctorList({ org_id, initialDoctors, specializations }: Props) {
   const [doctors, setDoctors] = useState<DoctorOrgRow[]>(initialDoctors as any)
   const [showAdd, setShowAdd] = useState(false)
+  const [editTarget, setEditTarget] = useState<DoctorOrgRow | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -81,6 +86,29 @@ export default function DoctorList({ org_id, initialDoctors, specializations }: 
           specializations={specializations}
           onClose={() => setShowAdd(false)}
           onSaved={async () => { setShowAdd(false); await reload() }}
+        />
+      )}
+
+      {/* Edit Doctor Modal */}
+      {editTarget && editTarget.doctors && (
+        <EditDoctorForm
+          doctor={{
+            doctor_org_id: editTarget.id,
+            doctor_id: editTarget.doctors.id,
+            full_name: editTarget.doctors.full_name,
+            qualification: editTarget.doctors.qualification,
+            experience_yrs: editTarget.doctors.experience_yrs,
+            bio: editTarget.doctors.bio,
+            languages: editTarget.doctors.languages,
+            photo_url: editTarget.doctors.photo_url,
+            consultation_fee: editTarget.consultation_fee,
+            specialization_ids: editTarget.doctors.doctor_specializations
+              .map(ds => ds.specializations?.id)
+              .filter((id): id is number => typeof id === 'number'),
+          }}
+          specializations={specializations}
+          onClose={() => setEditTarget(null)}
+          onSaved={async () => { setEditTarget(null); await reload() }}
         />
       )}
 
@@ -149,6 +177,13 @@ export default function DoctorList({ org_id, initialDoctors, specializations }: 
                   <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
                     row.is_active ? 'translate-x-4' : 'translate-x-1'
                   }`} />
+                </button>
+                {/* Edit */}
+                <button
+                  onClick={() => setEditTarget(row)}
+                  className="text-xs text-gray-500 hover:text-[#006EFF]"
+                >
+                  Edit details
                 </button>
                 {/* Expand schedule */}
                 <button

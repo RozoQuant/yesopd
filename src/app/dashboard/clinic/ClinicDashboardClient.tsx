@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import DoctorList from './DoctorList'
 import ClinicAppointmentsTab from './ClinicAppointmentsTab'
+import OrgSettingsTab from './OrgSettingsTab'
 import type { Organization } from '@/types'
 import StaffList from './StaffList'
 
@@ -14,7 +15,7 @@ interface Props {
   specializations: Specialization[]
 }
 
-type Tab = 'appointments' | 'doctors' | 'staff'
+type Tab = 'appointments' | 'doctors' | 'staff' | 'settings'
 
 export default function ClinicDashboardClient({org,initialDoctors,initialStaff,specializations}: Props) {
   const [tab, setTab] = useState<Tab>('appointments')
@@ -45,7 +46,7 @@ export default function ClinicDashboardClient({org,initialDoctors,initialStaff,s
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {(['appointments', 'doctors', 'staff'] as Tab[]).map(t => (
+        {(['appointments', 'doctors', 'staff', 'settings'] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -53,7 +54,7 @@ export default function ClinicDashboardClient({org,initialDoctors,initialStaff,s
               tab === t ? 'bg-white text-[#1A1A2E] shadow-sm' : 'text-gray-500'
             }`}
           >
-            {t === 'appointments'? 'Appointments': t === 'doctors'? 'Doctors': 'Staff'}
+            {t === 'appointments'? 'Appointments': t === 'doctors'? 'Doctors': t === 'staff' ? 'Staff' : 'Settings'}
           </button>
         ))}
       </div>
@@ -69,6 +70,8 @@ export default function ClinicDashboardClient({org,initialDoctors,initialStaff,s
         initialStaff={initialStaff}
       />
       )}
+
+      {tab === 'settings' && <OrgSettingsTab org={org} />}
 
     </div>
   )
