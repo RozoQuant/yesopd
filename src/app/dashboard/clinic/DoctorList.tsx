@@ -168,7 +168,7 @@ export default function DoctorList({ org_id, initialDoctors, specializations }: 
                 <p className="text-xs text-[#006EFF] font-medium mt-1">
                   ₹{row.consultation_fee} consultation fee
                   <span className="ml-2 text-gray-400">
-                    · {row.consultation_mode === 'BOTH' ? 'In-person & Video' : row.consultation_mode === 'TELECONSULT' ? 'Video only' : 'In-person only'}
+                    · {row.consultation_mode === 'BOTH' ? 'In-person & Teleconsultation' : row.consultation_mode === 'TELECONSULT' ? 'Teleconsultation only' : 'In-person only'}
                   </span>
                 </p>
               </div>
