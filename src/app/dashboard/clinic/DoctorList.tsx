@@ -164,7 +164,7 @@ export default function DoctorList({ org_id, initialDoctors, specializations }: 
                 {specs.length > 0 && (
                   <p className="text-xs text-gray-400 mt-1">{specs.join(', ')}</p>
                 )}
-                <p className="text-xs text-[#006EFF] font-medium mt-1">₹{row.consultation_fee} consultation fee</p>
+
                 <p className="text-xs text-[#006EFF] font-medium mt-1">
                   ₹{row.consultation_fee} consultation fee
                   <span className="ml-2 text-gray-400">
