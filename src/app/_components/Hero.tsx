@@ -1,5 +1,6 @@
+import Image from 'next/image'
 import SearchWidget from './SearchWidget'
-import { ShieldCheckIcon, LockIcon, FileTextIcon, TruckIcon, UsersIcon, StethoscopeIcon } from '@/components/site/icons'
+import { ShieldCheckIcon, LockIcon, FileTextIcon, TruckIcon, UsersIcon } from '@/components/site/icons'
 
 interface Specialization { id: number; name: string }
 
@@ -68,43 +69,18 @@ export default function Hero({
           </div>
         </div>
 
-        {/* Right: hero graphic — built from a real slice of the product (a live
-            queue card) rather than a stock photo, since that's the thing that
-            actually differentiates YesOPD. Stat badges use real counts from
-            Supabase, not hardcoded marketing numbers. */}
+        {/* Right: hero photo + real stat badges (not hardcoded numbers) */}
         <div className="relative hidden lg:flex items-center justify-center">
           <div className="absolute inset-0 bg-gradient-to-br from-[#006EFF]/10 via-[#006EFF]/5 to-transparent rounded-[3rem]" />
 
-          <div className="relative w-full max-w-sm bg-white rounded-3xl border border-gray-100 shadow-xl p-5 rotate-[-2deg]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-[#006EFF]/10 flex items-center justify-center text-[#006EFF]">
-                  <StethoscopeIcon className="w-4 h-4" />
-                </span>
-                <div>
-                  <p className="text-xs font-semibold text-[#1A1A2E]">Dr. Sharma · Cardiology</p>
-                  <p className="text-[11px] text-gray-400">City Care Clinic</p>
-                </div>
-              </div>
-              <span className="text-[10px] font-medium bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full">Live queue</span>
-            </div>
-
-            {[
-              { code: 'DRS-M-004', name: 'Waiting patient', status: 'With doctor', dot: 'bg-amber-400', text: 'text-amber-600', bg: 'bg-amber-50' },
-              { code: 'DRS-M-005', name: 'Next in line', status: 'Checked in', dot: 'bg-teal-400', text: 'text-teal-600', bg: 'bg-teal-50' },
-              { code: 'DRS-M-006', name: 'Booked slot · 11:30 AM', status: 'Waiting', dot: 'bg-blue-400', text: 'text-blue-600', bg: 'bg-blue-50' },
-            ].map(row => (
-              <div key={row.code} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
-                  <p className="text-xs font-semibold text-[#1A1A2E]">{row.code}</p>
-                  <p className="text-[11px] text-gray-400">{row.name}</p>
-                </div>
-                <span className={`flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-full ${row.bg} ${row.text}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${row.dot}`} />
-                  {row.status}
-                </span>
-              </div>
-            ))}
+          <div className="relative w-full max-w-sm aspect-[4/5]">
+            <Image
+              src="/images/doctor-hero.png"
+              alt="YesOPD doctor"
+              fill
+              priority
+              className="object-contain object-bottom drop-shadow-2xl"
+            />
           </div>
 
           {/* Floating stat badges — real counts */}
