@@ -76,16 +76,6 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // ── Root ──────────────────────────────────────────────────
-  if (pathname === '/') {
-    if (!user) return NextResponse.redirect(new URL('/search', request.url))
-    const { data: profile } = await supabase
-      .from('users').select('role').eq('id', user.id).single()
-    const role = profile?.role as UserRole | undefined
-    return NextResponse.redirect(
-      new URL(role ? ROLE_REDIRECTS[role] : '/auth/login', request.url)
-    )
-  }
 
   return response
 }
