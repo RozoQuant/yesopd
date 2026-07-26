@@ -56,3 +56,8 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Supabase CLI
+supabase/.temp/
+
+

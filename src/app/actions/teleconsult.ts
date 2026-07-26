@@ -64,8 +64,8 @@ export async function getTeleconsultTokenAction(appointment_id: string): Promise
   if (!isDoctor && !isPatient) return { error: 'Not authorised for this appointment.' }
 
   // ── Time-window guard ──
-  const apptStart = new Date(`${appt.appt_date}T${appt.slot_start}`)
-  const apptEnd = new Date(`${appt.appt_date}T${appt.slot_end}`)
+  const apptStart = new Date(`${appt.appt_date}T${appt.slot_start}+05:30`)
+  const apptEnd = new Date(`${appt.appt_date}T${appt.slot_end}+05:30`)
   const now = new Date()
   const earliestJoin = new Date(apptStart.getTime() - JOIN_WINDOW_MINUTES_BEFORE * 60_000)
   const latestJoin = new Date(apptEnd.getTime() + JOIN_GRACE_MINUTES_AFTER * 60_000)
